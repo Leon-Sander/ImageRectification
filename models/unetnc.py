@@ -9,14 +9,7 @@ class Estimator3d(pl.LightningModule):
                  norm_layer=nn.BatchNorm2d, use_dropout=False):
         super(UnetGenerator, self).__init__()
 
-
-    def build_coordinate_branch(self, input_nc, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False):
-        return
-    def build_curvature_branch(self, input_nc, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False):
-        return
-    def build_angle_branch(self, input_nc, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False):
-        return
-    def create_unet_block(self, input_nc, output_nc, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False):
+        # construct unet structure
         unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=None, norm_layer=norm_layer, innermost=True)
         for i in range(num_downs - 5):
             unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=unet_block, norm_layer=norm_layer, use_dropout=use_dropout)
@@ -25,7 +18,85 @@ class Estimator3d(pl.LightningModule):
         unet_block = UnetSkipConnectionBlock(ngf, ngf * 2, input_nc=None, submodule=unet_block, norm_layer=norm_layer)
         unet_block = UnetSkipConnectionBlock(output_nc, ngf, input_nc=input_nc, submodule=unet_block, outermost=True, norm_layer=norm_layer)
 
-        return unet_block
+        self.model = unet_block
+
+    def forward(self, input):
+        return self.model(input)
+
+    def split_tensors(self, model_output):
+        """Method to split the output channels of the prediction, to further calculate the loss
+
+
+        :param model_output: prediction of the model 
+        :type model_output: [type]
+        """
+        batch_size = model_output.shape[0]
+        wc_coordinates_pred = torch.empty(batch_size,3,256,256)
+        #angle_pred = torch.empty(batch_size,4,256,256)
+        phi_xx = torch.empty(batch_size,1,256,256)
+        phi_xy = torch.empty(batch_size,1,256,256)
+        phi_yx = torch.empty(batch_size,1,256,256)
+        phi_yy = torch.empty(batch_size,1,256,256)
+
+        idx = 0
+        for output in model_output:
+            
+            wc_coordinates_pred[idx] = output[:3]
+            #angle_pred[idx] = output[3:]
+            phi_xx[idx] = output[3]
+            phi_xy[idx] = output[4]
+            phi_yx[idx] = output[5]
+            phi_yy[idx] = output[6]
+
+            idx += 1
+
+        angle_pred = {'phi_xx' : phi_xx, 'phi_xy' : phi_xy, 'phi_yx' : phi_yx, 'phi_yy' : phi_yy,}
+        return wc_coordinates_pred, angle_pred
+
+    def training_step(self, batch, batch_idx):
+        images, labels = batch
+
+        htan = nn.Hardtanh(0,1.0)
+        MSE = nn.MSELoss()
+        loss_fn = nn.L1Loss()
+
+        outputs = self.model(images)
+        wc_coordinates_output, angle_output = self.split_tensors(outputs)
+
+        # l1 loss
+        wc_coordinates_pred=htan(wc_coordinates_output)
+        l1_loss = loss_fn(wc_coordinates_pred, labels['wc_gt'])
+
+        # loss of angle prediction
+        theta_x = torch.atan2(angle_output['phi_xx'], angle_output['phi_xy'])
+        theta_y = torch.atan2(angle_output['phi_yx'], angle_output['phi_yy'])
+        p_x = torch.cdist(angle_output['phi_xx'],angle_output['phi_xy'])
+        p_y = torch.cdist(angle_output['phi_yx'],angle_output['phi_yy'])
+
+        C = wc_coordinates_output - labels['wc_gt']
+        angle_loss = torch.norm(C,p=1)
+        
+         
+        
+        #loss=l1loss
+
+
+
+        return
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        return optimizer
+        '''
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3, weight_decay=5e-4, amsgrad=True)
+        sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
+        return {
+        'optimizer': optimizer,
+        'lr_scheduler': {
+            'scheduler': sched,
+            'monitor': 'metric_to_track',
+            }
+        }'''
 
 # Defines the Unet generator.
 # |num_downs|: number of downsamplings in UNet. For example,

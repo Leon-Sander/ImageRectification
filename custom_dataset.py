@@ -9,6 +9,10 @@ import cv2
 
 
 class CustomImageDataset_wc(Dataset):
+    """Dataset creation based on pytorch Dataset
+
+    :param Dataset: Import from torch.utils.data.Dataset
+    """
     def __init__(self, data_dir, transform=None, img_size = 256):
         #self.img_labels = pd.read_csv(annotations_file)
         self.data_dir = data_dir
