@@ -3,6 +3,7 @@ import torch.nn as nn
 from torch.nn import init
 import functools
 import pytorch_lightning as pl
+import math
 
 class Estimator3d(pl.LightningModule):
     def __init__(self, input_nc, output_nc, num_downs, ngf=64,
@@ -53,6 +54,20 @@ class Estimator3d(pl.LightningModule):
         angle_pred = {'phi_xx' : phi_xx, 'phi_xy' : phi_xy, 'phi_yx' : phi_yx, 'phi_yy' : phi_yy,}
         return wc_coordinates_pred, angle_pred
 
+
+    def l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt , type = 'paper'):
+        if type == 'paper':
+            l_x = (torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi) % (2*math.pi)
+            l_y = (torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi) % (2*math.pi)
+            l_angle = torch.add(l_x, l_y)
+            return l_angle
+        else:
+            l_x = (torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi) % (math.pi)
+            l_y = (torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi) % (math.pi)
+            l_angle = torch.add(l_x, l_y)
+            return l_angle
+            
+
     def training_step(self, batch, batch_idx):
         images, labels = batch
 
@@ -61,28 +76,30 @@ class Estimator3d(pl.LightningModule):
         loss_fn = nn.L1Loss()
 
         outputs = self.model(images)
-        wc_coordinates_output, angle_output = self.split_tensors(outputs)
+        wc_coordinates = outputs[:,0:3,:,:]
+        phi_xx = outputs[:,3:4,:,:]
+        phi_xy = outputs[:,4:5,:,:]
+        phi_yx = outputs[:,5:6,:,:]
+        phi_yy = outputs[:,6:7,:,:]
+        curvature_mesh = outputs[:,7:8,:,:]
 
-        # l1 loss
-        wc_coordinates_pred=htan(wc_coordinates_output)
-        l1_loss = loss_fn(wc_coordinates_pred, labels['wc_gt'])
+        l1_loss = torch.norm((wc_coordinates - labels['wc_gt']),p=1,dim=(1,2,3))
 
-        # loss of angle prediction
-        theta_x = torch.atan2(angle_output['phi_xx'], angle_output['phi_xy'])
-        theta_y = torch.atan2(angle_output['phi_yx'], angle_output['phi_yy'])
-        p_x = torch.cdist(angle_output['phi_xx'],angle_output['phi_xy'])
-        p_y = torch.cdist(angle_output['phi_yx'],angle_output['phi_yy'])
+        theta_x = torch.atan2(phi_xx, phi_xy)
+        theta_y = torch.atan2(phi_yx, phi_yy)
+        #p_x = torch.norm(phi_xx, phi_xy,p=2,dim=(1,2,3)) Bei der Norm darf nur ein Wert eingegeben Werden
+        #p_y = torch.norm(phi_yx, phi_yy,p=2,dim=(1,2,3))
+        theta_x_gt = labels['warped_angle_gt'][:,0:1,:,:]
+        theta_y_gt = labels['warped_angle_gt'][:,1:2,:,:]
+        l_angle = l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt , type = 'paper')
+        l_angle = l_angle * labels['warped_text_mask']
+        l_angle = l_angle[:,0,1,1]
 
-        C = wc_coordinates_output - labels['wc_gt']
-        angle_loss = torch.norm(C,p=1)
         
-         
+        l_curvature = torch.norm((curvature_mesh - labels['warped_curvature']),p=2,dim=(1,2,3))
         
-        #loss=l1loss
-
-
-
-        return
+        loss = l1_loss + l_angle + l_curvature
+        return torch.mean(loss)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)

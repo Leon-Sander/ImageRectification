@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from torch.utils import data
 from torch.utils.data import Dataset
 import torch
 from torchvision.io.image import ImageReadMode
@@ -35,18 +36,11 @@ class CustomImageDataset_wc(Dataset):
         
         # opening all the ground truth files 
         labels = {}
-        trainimage_gt = np.load(data_path + '/warped_WC.npz')['warped_WC']
-        labels['wc_gt'] = trainimage_gt #world coordinates ground truth
-        with open(data_path + '/warped_curvature.txt', 'r') as f:
-            curvature_gt = f.read()
-            labels['curvature_gt'] = curvature_gt
-        with open(data_path + '/warped_text_mask.txt', 'r') as f:
-            text_mask_gt = f.read()
-            labels['text_mask_gt'] = text_mask_gt
-        with open(data_path + '/warped_angle.txt', 'r') as f:
-            local_angle_gt = f.read()
-            labels['local_angle_gt'] = local_angle_gt    
-        
+        labels['wc_gt'] = np.load(data_path + '/warped_WC.npz')['warped_WC'] #world coordinates ground truth
+        labels['warped_angle_gt'] = np.load(data_path + '/warped_angle.npz')['warped_angle']
+        labels['warped_text_mask'] = np.load(data_path + '/warped_text_mask.npz')['warped_text_mask']
+        labels['warped_curvature_gt'] = np.load(data_path + '/warped_curvature.npz')['warped_curvature']
+
 
         if self.transform:
             image = self.transform_img(image)
@@ -86,4 +80,12 @@ class CustomImageDataset_wc(Dataset):
         lbl = torch.from_numpy(lbl).float()
         labels['wc_gt'] = lbl
 
+        for label in labels:
+            if label != 'wc_gt':
+                lbl = labels[label]
+                lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
+                lbl = np.array(lbl, dtype=np.float64)
+                lbl = torch.from_numpy(lbl).float()
+                labels[label] = lbl
+                
         return labels
