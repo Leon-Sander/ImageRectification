@@ -1,6 +1,7 @@
 models/pretrained
 Dataset Preview
-
+lightning_logs
+doc
 # Editors
 .vscode/
 .idea/

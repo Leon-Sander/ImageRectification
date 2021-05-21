@@ -8,7 +8,7 @@ import math
 class Estimator3d(pl.LightningModule):
     def __init__(self, input_nc, output_nc, num_downs, ngf=64,
                  norm_layer=nn.BatchNorm2d, use_dropout=False):
-        super(UnetGenerator, self).__init__()
+        super(Estimator3d, self).__init__()
 
         # construct unet structure
         unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=None, norm_layer=norm_layer, innermost=True)
@@ -55,15 +55,15 @@ class Estimator3d(pl.LightningModule):
         return wc_coordinates_pred, angle_pred
 
 
-    def l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt , type = 'paper'):
+    def l_angle_def(self, theta_x, theta_y, theta_x_gt, theta_y_gt , type = 'paper'):
         if type == 'paper':
             l_x = (torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi) % (2*math.pi)
             l_y = (torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi) % (2*math.pi)
             l_angle = torch.add(l_x, l_y)
             return l_angle
         else:
-            l_x = (torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi) % (math.pi)
-            l_y = (torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi) % (math.pi)
+            l_x = (math.pi) - torch.abs((torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi))
+            l_y = (math.pi) - torch.abs((torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi))
             l_angle = torch.add(l_x, l_y)
             return l_angle
             
@@ -71,9 +71,9 @@ class Estimator3d(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         images, labels = batch
 
-        htan = nn.Hardtanh(0,1.0)
-        MSE = nn.MSELoss()
-        loss_fn = nn.L1Loss()
+        #htan = nn.Hardtanh(0,1.0)
+        #MSE = nn.MSELoss()
+        #loss_fn = nn.L1Loss()
 
         outputs = self.model(images)
         wc_coordinates = outputs[:,0:3,:,:]
@@ -83,7 +83,7 @@ class Estimator3d(pl.LightningModule):
         phi_yy = outputs[:,6:7,:,:]
         curvature_mesh = outputs[:,7:8,:,:]
 
-        l1_loss = torch.norm((wc_coordinates - labels['wc_gt']),p=1,dim=(1,2,3))
+        l1_loss = torch.norm((wc_coordinates - labels['wc_gt']),p=1,dim=(1))
 
         theta_x = torch.atan2(phi_xx, phi_xy)
         theta_y = torch.atan2(phi_yx, phi_yy)
@@ -91,15 +91,17 @@ class Estimator3d(pl.LightningModule):
         #p_y = torch.norm(phi_yx, phi_yy,p=2,dim=(1,2,3))
         theta_x_gt = labels['warped_angle_gt'][:,0:1,:,:]
         theta_y_gt = labels['warped_angle_gt'][:,1:2,:,:]
-        l_angle = l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt , type = 'paper')
+        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
         l_angle = l_angle * labels['warped_text_mask']
-        l_angle = l_angle[:,0,1,1]
 
         
-        l_curvature = torch.norm((curvature_mesh - labels['warped_curvature']),p=2,dim=(1,2,3))
+        l_curvature = torch.norm((curvature_mesh - labels['warped_curvature_gt']),p=2,dim=(1))
         
         loss = l1_loss + l_angle + l_curvature
         return torch.mean(loss)
+    
+    def validation_step(self, batch, batch_idx):
+        return
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
