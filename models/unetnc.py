@@ -68,6 +68,36 @@ class Estimator3d(pl.LightningModule):
             return l_angle
             
 
+    def loss_calculation(self, outputs, labels):
+        wc_coordinates = outputs[:,0:3,:,:]
+        l1_loss = torch.norm((wc_coordinates - labels['wc_gt']),p=1,dim=(1))
+
+        
+        phi_xx = outputs[:,3:4,:,:]
+        phi_xy = outputs[:,4:5,:,:]
+        phi_yx = outputs[:,5:6,:,:]
+        phi_yy = outputs[:,6:7,:,:]
+        curvature_mesh = outputs[:,7:8,:,:]
+
+        
+
+        theta_x = torch.atan2(phi_xx, phi_xy)
+        theta_y = torch.atan2(phi_yx, phi_yy)
+        #p_x = torch.norm(phi_xx, phi_xy,p=2,dim=(1,2,3)) Bei der Norm darf nur ein Wert eingegeben Werden
+        #p_y = torch.norm(phi_yx, phi_yy,p=2,dim=(1,2,3))
+        theta_x_gt = labels['warped_angle_gt'][:,0:1,:,:]
+        theta_y_gt = labels['warped_angle_gt'][:,1:2,:,:]
+        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
+        l_angle = l_angle * labels['warped_text_mask']
+
+        
+        l_curvature = torch.norm((curvature_mesh - labels['warped_curvature_gt']),p=2,dim=(1))
+        
+        loss = l1_loss + l_angle + l_curvature
+        loss = torch.mean(loss)
+
+        return loss
+
     def training_step(self, batch, batch_idx):
         images, labels = batch
 
@@ -76,6 +106,77 @@ class Estimator3d(pl.LightningModule):
         #loss_fn = nn.L1Loss()
 
         outputs = self.model(images)
+        wc_coordinates = outputs[:,0:3,:,:]
+        l1_loss = torch.norm((wc_coordinates - labels['wc_gt']),p=1,dim=(1))
+
+        
+        phi_xx = outputs[:,3:4,:,:]
+        phi_xy = outputs[:,4:5,:,:]
+        phi_yx = outputs[:,5:6,:,:]
+        phi_yy = outputs[:,6:7,:,:]
+        curvature_mesh = outputs[:,7:8,:,:]
+
+        
+
+        theta_x = torch.atan2(phi_xx, phi_xy)
+        theta_y = torch.atan2(phi_yx, phi_yy)
+        #p_x = torch.norm(phi_xx, phi_xy,p=2,dim=(1,2,3)) Bei der Norm darf nur ein Wert eingegeben Werden
+        #p_y = torch.norm(phi_yx, phi_yy,p=2,dim=(1,2,3))
+        theta_x_gt = labels['warped_angle_gt'][:,0:1,:,:]
+        theta_y_gt = labels['warped_angle_gt'][:,1:2,:,:]
+        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
+        l_angle = l_angle * labels['warped_text_mask']
+
+        
+        l_curvature = torch.norm((curvature_mesh - labels['warped_curvature_gt']),p=2,dim=(1))
+        
+        loss = l1_loss + l_angle + l_curvature
+        loss = torch.mean(loss)
+        
+        #loss = torch.mean(l1_loss)
+
+        self.log("loss", loss)
+        return loss
+    
+    def validation_step(self, batch, batch_idx):
+        images, labels = batch
+        outputs = self.forward(images)
+        wc_coordinates = outputs[:,0:3,:,:]
+        l1_loss = torch.norm((wc_coordinates - labels['wc_gt']),p=1,dim=(1))
+
+        
+        phi_xx = outputs[:,3:4,:,:]
+        phi_xy = outputs[:,4:5,:,:]
+        phi_yx = outputs[:,5:6,:,:]
+        phi_yy = outputs[:,6:7,:,:]
+        curvature_mesh = outputs[:,7:8,:,:]
+
+        l1_loss = torch.norm((wc_coordinates - labels['wc_gt']),p=1,dim=(1))
+
+        theta_x = torch.atan2(phi_xx, phi_xy)
+        theta_y = torch.atan2(phi_yx, phi_yy)
+        #p_x = torch.norm(phi_xx, phi_xy,p=2,dim=(1,2,3)) Bei der Norm darf nur ein Wert eingegeben Werden
+        #p_y = torch.norm(phi_yx, phi_yy,p=2,dim=(1,2,3))
+        theta_x_gt = labels['warped_angle_gt'][:,0:1,:,:]
+        theta_y_gt = labels['warped_angle_gt'][:,1:2,:,:]
+        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
+        l_angle = l_angle * labels['warped_text_mask']
+
+        
+        l_curvature = torch.norm((curvature_mesh - labels['warped_curvature_gt']),p=2,dim=(1))
+        
+        loss = l1_loss + l_angle + l_curvature
+        loss = torch.mean(loss)
+        #self.log("val_loss", loss)
+        
+        #loss = torch.mean(l1_loss)
+
+        self.log("val_loss", loss, on_epoch=True) 
+        return loss
+
+    def test_step(self, batch, batch_idx):
+        images, labels = batch
+        outputs = self.forward(images)
         wc_coordinates = outputs[:,0:3,:,:]
         phi_xx = outputs[:,3:4,:,:]
         phi_xy = outputs[:,4:5,:,:]
@@ -98,10 +199,10 @@ class Estimator3d(pl.LightningModule):
         l_curvature = torch.norm((curvature_mesh - labels['warped_curvature_gt']),p=2,dim=(1))
         
         loss = l1_loss + l_angle + l_curvature
-        return torch.mean(loss)
-    
-    def validation_step(self, batch, batch_idx):
-        return
+        loss = torch.mean(loss)
+        #self.log("val_loss", loss)
+        self.log("test_loss", loss, on_epoch=True) 
+        return loss
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
@@ -113,7 +214,7 @@ class Estimator3d(pl.LightningModule):
         'optimizer': optimizer,
         'lr_scheduler': {
             'scheduler': sched,
-            'monitor': 'metric_to_track',
+            'monitor': 'loss',
             }
         }'''
 
