@@ -15,7 +15,7 @@ class CustomImageDataset_wc(Dataset):
 
     :param Dataset: Import from torch.utils.data.Dataset
     """
-    def __init__(self, data_dir, transform=None, img_size = 256):
+    def __init__(self, data_dir, transform=True, img_size = 256):
         #self.img_labels = pd.read_csv(annotations_file)
         self.data_dir = data_dir
         self.transform = transform
@@ -148,3 +148,50 @@ class CustomImageDataset_wc(Dataset):
                 labels[label] = lbl
                 
         return labels
+
+class Dataset_backward_mapping(Dataset):
+
+    def __init__(self, data_dir, transform=True, img_size = 256):
+        self.data_dir = data_dir
+        self.transform = transform
+        self.img_size = img_size if isinstance(img_size, tuple) else (img_size, img_size)
+
+    def __len__(self):
+        return len(os.listdir(self.data_dir))
+
+    def __getitem__(self, idx):
+        idx = sorted(os.listdir(self.data_dir))[idx]
+        data_path = os.path.join(self.data_dir, idx)
+
+        input = np.load(data_path + '/warped_WC.npz')['warped_WC']
+        
+        labels = {}
+        labels['warped_bm'] = np.load(data_path + '/warped_BM.npz')['warped_BM']
+
+        if self.transform:
+            input, labels = self.transform_data(input, labels)
+
+        return input, labels
+    
+    def transform_data(self, input, labels):
+        lbl = input
+        msk=((lbl[:,:,0]!=0)&(lbl[:,:,1]!=0)&(lbl[:,:,2]!=0)).astype(np.uint8)*255
+        #xmx, xmn, ymx, ymn,zmx, zmn= 1.2539363, -1.2442188, 1.2396319, -1.2289206, 0.6436657, -0.67492497   # calculate from all the wcs
+        xmx, xmn, ymx, ymn,zmx, zmn= 1.0858383, -1.0862498, 0.8847823, -0.8838696, 0.31327668, -0.30930856 # preview
+        lbl[:,:,0]= (lbl[:,:,0]-zmn)/(zmx-zmn)
+        lbl[:,:,1]= (lbl[:,:,1]-ymn)/(ymx-ymn)
+        lbl[:,:,2]= (lbl[:,:,2]-xmn)/(xmx-xmn)
+        lbl=cv2.bitwise_and(lbl,lbl,mask=msk)
+        lbl = cv2.resize(lbl, self.img_size, interpolation=cv2.INTER_NEAREST)
+        lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
+        lbl = np.array(lbl, dtype=np.float64)
+        lbl = torch.from_numpy(lbl).float()
+        input = lbl
+
+        lbl = labels['warped_bm']
+        lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
+        lbl = np.array(lbl, dtype=np.float64)
+        lbl = torch.from_numpy(lbl).float()
+        labels['warped_bm'] = lbl
+
+        return input, labels

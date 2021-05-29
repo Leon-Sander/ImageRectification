@@ -11,6 +11,7 @@ from torch.autograd import Variable
 from torch.autograd import gradcheck
 from torch.autograd import Function
 import numpy as np
+import pytorch_lightning as pl
 
 
 def add_coordConv_channels(t):
@@ -241,3 +242,64 @@ class dnetccnl(nn.Module):
         # print torch.min(decoded)
 
         return decoded
+
+class Backwardmapper(pl.LightningModule):
+    #in_channels -> nc      | encoder first layer
+    #filters -> ndf    | encoder first layer
+    #img_size(h,w) -> ndim
+    #out_channels  -> optical flow (x,y)
+
+    def __init__(self, img_size=256, in_channels=3, out_channels=2, filters=32,fc_units=100):
+        super(Backwardmapper, self).__init__()
+        self.nc=in_channels
+        self.nf=filters
+        self.ndim=img_size
+        self.oc=out_channels
+        self.fcu=fc_units
+
+        self.encoder=waspDenseEncoder128(nc=self.nc+2,ndf=self.nf,ndim=self.ndim)
+        self.decoder=waspDenseDecoder128(nz=self.ndim,nc=self.oc,ngf=self.nf)
+        # self.fc_layers= nn.Sequential(nn.Linear(self.ndim, self.fcu),
+        #                               nn.ReLU(True),
+        #                               nn.Dropout(0.25),
+        #                               nn.Linear(self.fcu,self.ndim),
+        #                               nn.ReLU(True),
+        #                               nn.Dropout(0.25),
+        #                               )
+
+    def forward(self, inputs):
+        encoded=self.encoder(inputs)
+        encoded=encoded.unsqueeze(-1).unsqueeze(-1)
+        decoded=self.decoder(encoded)
+        # print torch.max(decoded)
+        # print torch.min(decoded)
+
+        return decoded
+
+    def loss_calculation(self, inputs, label):
+        encoded=self.encoder(inputs)
+        encoded=encoded.unsqueeze(-1).unsqueeze(-1)
+        decoded=self.decoder(encoded)
+
+        l1_loss = torch.norm((decoded - label['warped_bm']),p=1,dim=(1))
+        # angle loss noch
+
+        loss = torch.mean(l1_loss)
+
+        return loss
+
+    def training_step(self, batch, batch_idx):
+        inputs, label = batch
+        return self.loss_calculation(inputs, label)
+
+    def validation_step(self, batch, batch_idx):
+        inputs, label = batch
+        return self.loss_calculation(inputs, label)
+
+    def test_step(self, batch, batch_idx):
+        inputs, label = batch
+        return self.loss_calculation(inputs, label)
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        return optimizer
