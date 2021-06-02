@@ -128,7 +128,7 @@ class DenseTransitionBlockDecoder(nn.Module):
 
 ## Dense encoders and decoders for image of size 128 128
 class waspDenseEncoder128(nn.Module):
-    def __init__(self, nc=1, ndf = 32, ndim = 128, activation=nn.LeakyReLU, args=[0.2, False], f_activation=nn.Tanh, f_args=[]):
+    def __init__(self, nc=1, ndf = 32, ndim = 256, activation=nn.LeakyReLU, args=[0.2, False], f_activation=nn.Tanh, f_args=[]):
         super(waspDenseEncoder128, self).__init__()
         self.ndim = ndim
 
@@ -174,6 +174,7 @@ class waspDenseDecoder128(nn.Module):
             nn.BatchNorm2d(nz),
             activation(*args),
             nn.ConvTranspose2d(nz, ngf * 8, 4, 1, 0, bias=False),
+            # inchannels, out channels, kernel size = 4, stride = 1, padding= 0
 
             # state size. (ngf*8) x 4 x 4
             DenseBlockDecoder(ngf*8, 16),
@@ -192,6 +193,10 @@ class waspDenseDecoder128(nn.Module):
             DenseTransitionBlockDecoder(ngf*2, ngf),
 
             # state size. (ngf) x 64 x 64
+            DenseBlockDecoder(ngf, 6),
+            DenseTransitionBlockDecoder(ngf, ngf),
+
+            # hinzugefügt um auf 256 zu kommen
             DenseBlockDecoder(ngf, 6),
             DenseTransitionBlockDecoder(ngf, ngf),
 
@@ -226,6 +231,7 @@ class dnetccnl(nn.Module):
 
         self.encoder=waspDenseEncoder128(nc=self.nc+2,ndf=self.nf,ndim=self.ndim)
         self.decoder=waspDenseDecoder128(nz=self.ndim,nc=self.oc,ngf=self.nf)
+        
         # self.fc_layers= nn.Sequential(nn.Linear(self.ndim, self.fcu),
         #                               nn.ReLU(True),
         #                               nn.Dropout(0.25),
@@ -259,6 +265,7 @@ class Backwardmapper(pl.LightningModule):
 
         self.encoder=waspDenseEncoder128(nc=self.nc+2,ndf=self.nf,ndim=self.ndim)
         self.decoder=waspDenseDecoder128(nz=self.ndim,nc=self.oc,ngf=self.nf)
+        #self.decoder=waspDenseDecoder128(nz=self.ndim,nc=self.oc,ngf=64)
         # self.fc_layers= nn.Sequential(nn.Linear(self.ndim, self.fcu),
         #                               nn.ReLU(True),
         #                               nn.Dropout(0.25),

@@ -101,10 +101,6 @@ class Estimator3d(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         images, labels = batch
 
-        #htan = nn.Hardtanh(0,1.0)
-        #MSE = nn.MSELoss()
-        #loss_fn = nn.L1Loss()
-
         outputs = self.model(images)
         wc_coordinates = outputs[:,0:3,:,:]
         l1_loss = torch.norm((wc_coordinates - labels['wc_gt']),p=1,dim=(1))
