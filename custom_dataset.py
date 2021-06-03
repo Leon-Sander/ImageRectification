@@ -167,6 +167,7 @@ class Dataset_backward_mapping(Dataset):
         
         labels = {}
         labels['warped_bm'] = np.load(data_path + '/warped_BM.npz')['warped_BM']
+        labels['warped_uv'] = np.load(data_path + '/warped_uv.npz')['warped_uv']
 
         if self.transform:
             input, labels = self.transform_data(input, labels)
@@ -188,10 +189,12 @@ class Dataset_backward_mapping(Dataset):
         lbl = torch.from_numpy(lbl).float()
         input = lbl
 
-        lbl = labels['warped_bm']
-        lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
-        lbl = np.array(lbl, dtype=np.float64)
-        lbl = torch.from_numpy(lbl).float()
-        labels['warped_bm'] = lbl
+        for label in labels:
+
+            lbl = labels[label]
+            lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
+            lbl = np.array(lbl, dtype=np.float64)
+            lbl = torch.from_numpy(lbl).float()
+            labels[label] = lbl
 
         return input, labels

@@ -12,6 +12,7 @@ from torch.autograd import gradcheck
 from torch.autograd import Function
 import numpy as np
 import pytorch_lightning as pl
+import angles
 
 
 def add_coordConv_channels(t):
@@ -283,29 +284,31 @@ class Backwardmapper(pl.LightningModule):
 
         return decoded
 
-    def loss_calculation(self, inputs, label):
+    def loss_calculation(self, inputs, labels):
         encoded=self.encoder(inputs)
         encoded=encoded.unsqueeze(-1).unsqueeze(-1)
         decoded=self.decoder(encoded)
 
-        l1_loss = torch.norm((decoded - label['warped_bm']),p=1,dim=(1))
+        l1_loss = torch.norm((decoded - labels['warped_bm']),p=1,dim=(1))
         # angle loss noch
+        angles_map = angles.calc_angles_torch(decoded)
+        warped_angle = angles.warp_grid_torch(angles_map, labels['warped_uv'])
 
         loss = torch.mean(l1_loss)
 
         return loss
 
     def training_step(self, batch, batch_idx):
-        inputs, label = batch
-        return self.loss_calculation(inputs, label)
+        inputs, labels = batch
+        return self.loss_calculation(inputs, labels)
 
     def validation_step(self, batch, batch_idx):
-        inputs, label = batch
-        return self.loss_calculation(inputs, label)
+        inputs, labels = batch
+        return self.loss_calculation(inputs, labels)
 
     def test_step(self, batch, batch_idx):
-        inputs, label = batch
-        return self.loss_calculation(inputs, label)
+        inputs, labels = batch
+        return self.loss_calculation(inputs, labels)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
