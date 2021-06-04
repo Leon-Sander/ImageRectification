@@ -167,7 +167,8 @@ class Dataset_backward_mapping(Dataset):
         
         labels = {}
         labels['warped_bm'] = np.load(data_path + '/warped_BM.npz')['warped_BM']
-        labels['warped_uv'] = np.load(data_path + '/warped_uv.npz')['warped_uv']
+        labels['warped_uv'] = np.load(data_path + '/warped_UV.npz')['warped_UV']
+        labels['warped_angle'] = np.load(data_path + '/warped_angle.npz')['warped_angle']
 
         if self.transform:
             input, labels = self.transform_data(input, labels)

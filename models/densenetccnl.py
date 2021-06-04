@@ -13,6 +13,7 @@ from torch.autograd import Function
 import numpy as np
 import pytorch_lightning as pl
 import angles
+import math
 
 
 def add_coordConv_channels(t):
@@ -158,6 +159,7 @@ class waspDenseEncoder128(nn.Module):
                 # state size. (ndf*8) x 4 x 4
                 DenseBlockEncoder(ndf*8, 16),
                 DenseTransitionBlockEncoder(ndf*8, ndim, 4, activation=activation, args=args),
+                #DenseTransitionBlockEncoder(ndf*8, ndim, 5, activation=activation, args=args), # die 4 bzw 1 genauer nachschauen was das ist
                 f_activation(*f_args),
         )
 
@@ -284,15 +286,45 @@ class Backwardmapper(pl.LightningModule):
 
         return decoded
 
+    
+    def test_forward(self, inputs):
+        encoded=self.encoder(inputs)
+        return encoded , encoded.unsqueeze(-1).unsqueeze(-1) , self.decoder(encoded.unsqueeze(-1).unsqueeze(-1))
+
+
+        return decoded
+
+    def l_angle_def(self, theta_x, theta_y, theta_x_gt, theta_y_gt , type = 'paper'):
+        if type == 'paper':
+            l_x = (torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi) % (2*math.pi)
+            l_y = (torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi) % (2*math.pi)
+            l_angle = torch.add(l_x, l_y)
+            return l_angle
+        else:
+            l_x = (math.pi) - torch.abs((torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi))
+            l_y = (math.pi) - torch.abs((torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi))
+            l_angle = torch.add(l_x, l_y)
+            return l_angle
+
     def loss_calculation(self, inputs, labels):
         encoded=self.encoder(inputs)
         encoded=encoded.unsqueeze(-1).unsqueeze(-1)
         decoded=self.decoder(encoded)
 
+        print(decoded.shape)
         l1_loss = torch.norm((decoded - labels['warped_bm']),p=1,dim=(1))
         # angle loss noch
-        angles_map = angles.calc_angles_torch(decoded)
-        warped_angle = angles.warp_grid_torch(angles_map, labels['warped_uv'])
+        angles_map = angles.calc_angles_torch(decoded.transpose(1,2).transpose(2,3))
+        warped_angle = angles.warp_grid_torch(angles_map, labels['warped_uv'].transpose(1,2).transpose(2,3))
+        warped_angle.transpose(3,2).transpose(2,1)
+        theta_x = warped_angle[:,0:1,:,:]
+        theta_y = warped_angle[:,1:2,:,:]
+
+        theta_x_gt = labels['warped_angle_gt'][:,0:1,:,:]
+        theta_y_gt = labels['warped_angle_gt'][:,1:2,:,:]
+        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
+        l_angle = l_angle * labels['warped_text_mask']
+
 
         loss = torch.mean(l1_loss)
 
@@ -311,5 +343,13 @@ class Backwardmapper(pl.LightningModule):
         return self.loss_calculation(inputs, labels)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        return optimizer
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3, weight_decay=5e-4, amsgrad=True)
+        sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
+        return {
+        'optimizer': optimizer,
+        'lr_scheduler': {
+            'scheduler': sched,
+            'monitor': 'loss',
+            }
+        }
+        #return optimizer

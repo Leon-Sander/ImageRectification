@@ -24,37 +24,6 @@ class Estimator3d(pl.LightningModule):
     def forward(self, input):
         return self.model(input)
 
-    def split_tensors(self, model_output):
-        """Method to split the output channels of the prediction, to further calculate the loss
-
-
-        :param model_output: prediction of the model 
-        :type model_output: [type]
-        """
-        batch_size = model_output.shape[0]
-        wc_coordinates_pred = torch.empty(batch_size,3,256,256)
-        #angle_pred = torch.empty(batch_size,4,256,256)
-        phi_xx = torch.empty(batch_size,1,256,256)
-        phi_xy = torch.empty(batch_size,1,256,256)
-        phi_yx = torch.empty(batch_size,1,256,256)
-        phi_yy = torch.empty(batch_size,1,256,256)
-
-        idx = 0
-        for output in model_output:
-            
-            wc_coordinates_pred[idx] = output[:3]
-            #angle_pred[idx] = output[3:]
-            phi_xx[idx] = output[3]
-            phi_xy[idx] = output[4]
-            phi_yx[idx] = output[5]
-            phi_yy[idx] = output[6]
-
-            idx += 1
-
-        angle_pred = {'phi_xx' : phi_xx, 'phi_xy' : phi_xy, 'phi_yx' : phi_yx, 'phi_yy' : phi_yy,}
-        return wc_coordinates_pred, angle_pred
-
-
     def l_angle_def(self, theta_x, theta_y, theta_x_gt, theta_y_gt , type = 'paper'):
         if type == 'paper':
             l_x = (torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi) % (2*math.pi)
@@ -102,101 +71,24 @@ class Estimator3d(pl.LightningModule):
         images, labels = batch
 
         outputs = self.model(images)
-        wc_coordinates = outputs[:,0:3,:,:]
-        l1_loss = torch.norm((wc_coordinates - labels['wc_gt']),p=1,dim=(1))
-
-        
-        phi_xx = outputs[:,3:4,:,:]
-        phi_xy = outputs[:,4:5,:,:]
-        phi_yx = outputs[:,5:6,:,:]
-        phi_yy = outputs[:,6:7,:,:]
-        curvature_mesh = outputs[:,7:8,:,:]
-
-        
-
-        theta_x = torch.atan2(phi_xx, phi_xy)
-        theta_y = torch.atan2(phi_yx, phi_yy)
-        #p_x = torch.norm(phi_xx, phi_xy,p=2,dim=(1,2,3)) Bei der Norm darf nur ein Wert eingegeben Werden
-        #p_y = torch.norm(phi_yx, phi_yy,p=2,dim=(1,2,3))
-        theta_x_gt = labels['warped_angle_gt'][:,0:1,:,:]
-        theta_y_gt = labels['warped_angle_gt'][:,1:2,:,:]
-        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
-        l_angle = l_angle * labels['warped_text_mask']
-
-        
-        l_curvature = torch.norm((curvature_mesh - labels['warped_curvature_gt']),p=2,dim=(1))
-        
-        loss = l1_loss + l_angle + l_curvature
-        loss = torch.mean(loss)
-        
-        #loss = torch.mean(l1_loss)
-
+        loss = self.loss_calculation(outputs, labels)
         self.log("loss", loss)
         return loss
+ 
     
     def validation_step(self, batch, batch_idx):
         images, labels = batch
         outputs = self.forward(images)
-        wc_coordinates = outputs[:,0:3,:,:]
-        l1_loss = torch.norm((wc_coordinates - labels['wc_gt']),p=1,dim=(1))
 
-        
-        phi_xx = outputs[:,3:4,:,:]
-        phi_xy = outputs[:,4:5,:,:]
-        phi_yx = outputs[:,5:6,:,:]
-        phi_yy = outputs[:,6:7,:,:]
-        curvature_mesh = outputs[:,7:8,:,:]
-
-        l1_loss = torch.norm((wc_coordinates - labels['wc_gt']),p=1,dim=(1))
-
-        theta_x = torch.atan2(phi_xx, phi_xy)
-        theta_y = torch.atan2(phi_yx, phi_yy)
-        #p_x = torch.norm(phi_xx, phi_xy,p=2,dim=(1,2,3)) Bei der Norm darf nur ein Wert eingegeben Werden
-        #p_y = torch.norm(phi_yx, phi_yy,p=2,dim=(1,2,3))
-        theta_x_gt = labels['warped_angle_gt'][:,0:1,:,:]
-        theta_y_gt = labels['warped_angle_gt'][:,1:2,:,:]
-        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
-        l_angle = l_angle * labels['warped_text_mask']
-
-        
-        l_curvature = torch.norm((curvature_mesh - labels['warped_curvature_gt']),p=2,dim=(1))
-        
-        loss = l1_loss + l_angle + l_curvature
-        loss = torch.mean(loss)
-        #self.log("val_loss", loss)
-        
-        #loss = torch.mean(l1_loss)
-
+        loss = self.loss_calculation(outputs, labels)
         self.log("val_loss", loss, on_epoch=True) 
         return loss
 
     def test_step(self, batch, batch_idx):
         images, labels = batch
         outputs = self.forward(images)
-        wc_coordinates = outputs[:,0:3,:,:]
-        phi_xx = outputs[:,3:4,:,:]
-        phi_xy = outputs[:,4:5,:,:]
-        phi_yx = outputs[:,5:6,:,:]
-        phi_yy = outputs[:,6:7,:,:]
-        curvature_mesh = outputs[:,7:8,:,:]
 
-        l1_loss = torch.norm((wc_coordinates - labels['wc_gt']),p=1,dim=(1))
-
-        theta_x = torch.atan2(phi_xx, phi_xy)
-        theta_y = torch.atan2(phi_yx, phi_yy)
-        #p_x = torch.norm(phi_xx, phi_xy,p=2,dim=(1,2,3)) Bei der Norm darf nur ein Wert eingegeben Werden
-        #p_y = torch.norm(phi_yx, phi_yy,p=2,dim=(1,2,3))
-        theta_x_gt = labels['warped_angle_gt'][:,0:1,:,:]
-        theta_y_gt = labels['warped_angle_gt'][:,1:2,:,:]
-        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
-        l_angle = l_angle * labels['warped_text_mask']
-
-        
-        l_curvature = torch.norm((curvature_mesh - labels['warped_curvature_gt']),p=2,dim=(1))
-        
-        loss = l1_loss + l_angle + l_curvature
-        loss = torch.mean(loss)
-        #self.log("val_loss", loss)
+        loss = self.loss_calculation(outputs, labels)
         self.log("test_loss", loss, on_epoch=True) 
         return loss
 
