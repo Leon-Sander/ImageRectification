@@ -172,6 +172,7 @@ class waspDenseEncoder256(nn.Module):
 
     def forward(self, input):
         input=add_coordConv_channels(input)
+        #self.log("shape", str(input.shape))
         output = self.main(input)#.view(-1,self.ndim)
         #output = self.main(input)
         #print(output.size())
@@ -256,6 +257,7 @@ class Backwardmapper(pl.LightningModule):
         if inputs.shape[0] == 1:
             self.eval()
         encoded=self.encoder(inputs)
+        self.log("shape", str(encoded.shape))
         #encoded=encoded.unsqueeze(-1).unsqueeze(-1)
         decoded=self.decoder(encoded)
         # print torch.max(decoded)
@@ -303,8 +305,8 @@ class Backwardmapper(pl.LightningModule):
         l_angle = l_angle * labels['warped_text_mask']
 
 
-        loss = torch.mean(l1_loss)
-
+        loss = torch.mean(l1_loss + l_angle)
+        #loss = torch.mean(l1_loss)
         return loss
 
     def training_step(self, batch, batch_idx):
@@ -326,7 +328,7 @@ class Backwardmapper(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-2)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
         return optimizer
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3, weight_decay=5e-4, amsgrad=True)
         sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)

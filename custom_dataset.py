@@ -170,7 +170,7 @@ class Dataset_backward_mapping(Dataset):
         labels['warped_uv'] = np.load(data_path + '/warped_UV.npz')['warped_UV']
         labels['warped_angle'] = np.load(data_path + '/warped_angle.npz')['warped_angle']
         labels['warped_text_mask'] = np.load(data_path + '/warped_text_mask.npz')['warped_text_mask']
-        
+
         if self.transform:
             input, labels = self.transform_data(input, labels)
 
@@ -198,5 +198,89 @@ class Dataset_backward_mapping(Dataset):
             lbl = np.array(lbl, dtype=np.float64)
             lbl = torch.from_numpy(lbl).float()
             labels[label] = lbl
+
+        return input, labels
+
+
+class Dataset_full_model(Dataset):
+
+    def __init__(self, data_dir, transform=True, img_size = 256):
+        self.data_dir = data_dir
+        self.transform = transform
+        self.img_size = img_size if isinstance(img_size, tuple) else (img_size, img_size)
+
+    def __len__(self):
+        return len(os.listdir(self.data_dir))
+
+    def __getitem__(self, idx):
+        idx = sorted(os.listdir(self.data_dir))[idx]
+        data_path = os.path.join(self.data_dir, idx)
+
+        
+        input =  Image.open(data_path + '/warped_document.png')
+
+        labels = {}
+        labels['warped_bm'] = np.load(data_path + '/warped_BM.npz')['warped_BM']
+        labels['warped_uv'] = np.load(data_path + '/warped_UV.npz')['warped_UV']
+        labels['warped_angle'] = np.load(data_path + '/warped_angle.npz')['warped_angle']
+        labels['warped_text_mask'] = np.load(data_path + '/warped_text_mask.npz')['warped_text_mask']
+        labels['wc_gt'] = np.load(data_path + '/warped_WC.npz')['warped_WC'] #world coordinates ground truth
+        #labels['warped_angle_gt'] = np.load(data_path + '/warped_angle.npz')['warped_angle']
+        #labels['warped_text_mask'] = np.load(data_path + '/warped_text_mask.npz')['warped_text_mask']
+        labels['warped_curvature_gt'] = np.load(data_path + '/warped_curvature.npz')['warped_curvature']
+        
+        if self.transform:
+            input, labels = self.transform_data(input, labels)
+
+        return input, labels
+    
+    def transform_data(self, input, labels):
+
+        # convert image to numpy array
+        img = asarray(input)
+        #img = m.imresize(img, self.img_size) # uint8 with RGB mode
+        if img.shape[-1] == 4:
+            img=img[:,:,:3]   # Discard the alpha channel  
+        img = img[:, :, ::-1] # RGB -> BGR
+        img = img.astype(float) / 255.0
+        img = img.transpose(2, 0, 1) # NHWC -> NCHW
+        input = torch.from_numpy(img).float()
+
+        
+        lbl = labels['wc_gt']
+        msk=((lbl[:,:,0]!=0)&(lbl[:,:,1]!=0)&(lbl[:,:,2]!=0)).astype(np.uint8)*255
+        #xmx, xmn, ymx, ymn,zmx, zmn= 1.2539363, -1.2442188, 1.2396319, -1.2289206, 0.6436657, -0.67492497   # calculate from all the wcs
+        xmx, xmn, ymx, ymn,zmx, zmn= 1.0858383, -1.0862498, 0.8847823, -0.8838696, 0.31327668, -0.30930856 # preview
+        lbl[:,:,0]= (lbl[:,:,0]-zmn)/(zmx-zmn)
+        lbl[:,:,1]= (lbl[:,:,1]-ymn)/(ymx-ymn)
+        lbl[:,:,2]= (lbl[:,:,2]-xmn)/(xmx-xmn)
+        lbl=cv2.bitwise_and(lbl,lbl,mask=msk)
+        lbl = cv2.resize(lbl, self.img_size, interpolation=cv2.INTER_NEAREST)
+        lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
+        lbl = np.array(lbl, dtype=np.float64)
+        lbl = torch.from_numpy(lbl).float()
+        labels['wc_gt'] = lbl
+
+        curv_mx = 0.015919654 #curvature
+
+        for label in labels:
+            if label != 'wc_gt':
+
+                if label != 'img':
+                    lbl = labels[label]
+                    if label == 'warped_curvature_gt':
+                        lbl[:,:,0]= (lbl[:,:,0]/curv_mx)
+
+                    lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
+                    lbl = np.array(lbl, dtype=np.float64)
+                    lbl = torch.from_numpy(lbl).float()
+                    labels[label] = lbl
+                else:
+                    img = labels[label]
+                    img = img.transpose(2, 0, 1)
+                    img = torch.from_numpy(img).float()
+                    #img = img.unsqueeze(0)#.transpose(2,3).transpose
+                    img = img / 255
+                    labels[label] = img
 
         return input, labels
