@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 class crease(pl.LightningModule):
     def __init__(self, num_downs = 5, input_nc_wc = 3, output_nc_wc = 8, img_size = 256 , use_pre_trained = False, ngf_wc=64,
-                 norm_layer=nn.BatchNorm2d, use_dropout=False, lr = "1e-3", weight_decay=5e-4): #img_size
+                 norm_layer=nn.BatchNorm2d, use_dropout=False, lr = 1e-3, weight_decay=5e-4): #img_size
         super(crease, self).__init__()
 
         self.lr = lr

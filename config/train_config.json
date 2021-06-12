@@ -6,10 +6,14 @@
             "num_downs" : 5, 
             "ngf" : 64,
             "norm_layer" : "nn.BatchNorm2d", 
-            "use_dropout" : "False",
+            "use_dropout" : 0,
             "lr" : 1e-3, 
             "weight_decay" : 5e-4,
-            "data_path" : "Dataset Preview/Inv3D preview complete V2/data/"
+            "data_path" : "Dataset Preview/Inv3D preview complete V2/data/",
+            "batch_size_train" : 1,
+            "gpus" : 1,
+            "max_epochs" : 10,
+            "save_name" : "wc_test"
 
         },   
 
@@ -22,9 +26,11 @@
             "fc_units" : 100,
             "lr" : 1e-3, 
             "weight_decay" : 5e-4,
-            "data_path" : "Dataset Preview/Inv3D preview complete V2/data/"
-
-
+            "data_path" : "Dataset Preview/Inv3D preview complete V2/data/",
+            "batch_size_train" : 2,
+            "gpus" : 1,
+            "max_epochs" : 10,
+            "save_name" : "bm_test"
 
         },
 
@@ -34,13 +40,17 @@
             "input_nc_wc" : 3, 
             "output_nc_wc" : 8, 
             "img_size" : 256 , 
-            "use_pre_trained" : "False", 
+            "use_pre_trained" : 0, 
             "ngf_wc":64,
             "norm_layer":"nn.BatchNorm2d", 
-            "use_dropout":"False", 
+            "use_dropout": 0, 
             "lr" : 1e-3, 
-            "weight_decay" : 5e-4
-
+            "weight_decay" : 5e-4,
+            "data_path" : "Dataset Preview/Inv3D preview complete V2/data/",
+            "batch_size_train" : 2,
+            "gpus" : 1,
+            "max_epochs" : 10,
+            "save_name" : "full_model_test"
 
         }
 

@@ -234,7 +234,7 @@ class Backwardmapper(pl.LightningModule):
     #img_size(h,w) -> ndim
     #out_channels  -> optical flow (x,y)
 
-    def __init__(self, img_size=256, in_channels=3, out_channels=2, filters=32,fc_units=100, lr = "1e-3", weight_decay=5e-4):
+    def __init__(self, img_size=256, in_channels=3, out_channels=2, filters=32,fc_units=100, lr = 1e-3, weight_decay=5e-4):
         super(Backwardmapper, self).__init__()
         self.nc=in_channels
         self.nf=filters
