@@ -11,9 +11,6 @@ from torch.autograd import Variable
 from torch.autograd import gradcheck
 from torch.autograd import Function
 import numpy as np
-import pytorch_lightning as pl
-import angles
-import math
 
 
 def add_coordConv_channels(t):
@@ -130,7 +127,7 @@ class DenseTransitionBlockDecoder(nn.Module):
 
 ## Dense encoders and decoders for image of size 128 128
 class waspDenseEncoder128(nn.Module):
-    def __init__(self, nc=1, ndf = 32, ndim = 256, activation=nn.LeakyReLU, args=[0.2, False], f_activation=nn.Tanh, f_args=[]):
+    def __init__(self, nc=1, ndf = 32, ndim = 128, activation=nn.LeakyReLU, args=[0.2, False], f_activation=nn.Tanh, f_args=[]):
         super(waspDenseEncoder128, self).__init__()
         self.ndim = ndim
 
@@ -159,13 +156,12 @@ class waspDenseEncoder128(nn.Module):
                 # state size. (ndf*8) x 4 x 4
                 DenseBlockEncoder(ndf*8, 16),
                 DenseTransitionBlockEncoder(ndf*8, ndim, 4, activation=activation, args=args),
-                #DenseTransitionBlockEncoder(ndf*8, ndim, 5, activation=activation, args=args), # die 4 bzw 1 genauer nachschauen was das ist
                 f_activation(*f_args),
         )
 
     def forward(self, input):
         input=add_coordConv_channels(input)
-        output = self.main(input).view(-1,self.ndim)
+        output = self.main(input)#.view(-1,self.ndim)
         #print(output.size())
         return output
 
@@ -177,7 +173,6 @@ class waspDenseDecoder128(nn.Module):
             nn.BatchNorm2d(nz),
             activation(*args),
             nn.ConvTranspose2d(nz, ngf * 8, 4, 1, 0, bias=False),
-            # inchannels, out channels, kernel size = 4, stride = 1, padding= 0
 
             # state size. (ngf*8) x 4 x 4
             DenseBlockDecoder(ngf*8, 16),
@@ -196,10 +191,6 @@ class waspDenseDecoder128(nn.Module):
             DenseTransitionBlockDecoder(ngf*2, ngf),
 
             # state size. (ngf) x 64 x 64
-            DenseBlockDecoder(ngf, 6),
-            DenseTransitionBlockDecoder(ngf, ngf),
-
-            # hinzugefügt um auf 256 zu kommen
             DenseBlockDecoder(ngf, 6),
             DenseTransitionBlockDecoder(ngf, ngf),
 
@@ -234,7 +225,6 @@ class dnetccnl(nn.Module):
 
         self.encoder=waspDenseEncoder128(nc=self.nc+2,ndf=self.nf,ndim=self.ndim)
         self.decoder=waspDenseDecoder128(nz=self.ndim,nc=self.oc,ngf=self.nf)
-        
         # self.fc_layers= nn.Sequential(nn.Linear(self.ndim, self.fcu),
         #                               nn.ReLU(True),
         #                               nn.Dropout(0.25),
@@ -252,104 +242,11 @@ class dnetccnl(nn.Module):
 
         return decoded
 
-class Backwardmapper(pl.LightningModule):
-    #in_channels -> nc      | encoder first layer
-    #filters -> ndf    | encoder first layer
-    #img_size(h,w) -> ndim
-    #out_channels  -> optical flow (x,y)
-
-    def __init__(self, img_size=256, in_channels=3, out_channels=2, filters=32,fc_units=100):
-        super(Backwardmapper, self).__init__()
-        self.nc=in_channels
-        self.nf=filters
-        self.ndim=img_size
-        self.oc=out_channels
-        self.fcu=fc_units
-
-        self.encoder=waspDenseEncoder128(nc=self.nc+2,ndf=self.nf,ndim=self.ndim)
-        self.decoder=waspDenseDecoder128(nz=self.ndim,nc=self.oc,ngf=self.nf)
-        #self.decoder=waspDenseDecoder128(nz=self.ndim,nc=self.oc,ngf=64)
-        # self.fc_layers= nn.Sequential(nn.Linear(self.ndim, self.fcu),
-        #                               nn.ReLU(True),
-        #                               nn.Dropout(0.25),
-        #                               nn.Linear(self.fcu,self.ndim),
-        #                               nn.ReLU(True),
-        #                               nn.Dropout(0.25),
-        #                               )
-
-    def forward(self, inputs):
-        encoded=self.encoder(inputs)
-        encoded=encoded.unsqueeze(-1).unsqueeze(-1)
-        decoded=self.decoder(encoded)
-        # print torch.max(decoded)
-        # print torch.min(decoded)
-
-        return decoded
-
-    
     def test_forward(self, inputs):
         encoded=self.encoder(inputs)
-        return encoded , encoded.unsqueeze(-1).unsqueeze(-1) , self.decoder(encoded.unsqueeze(-1).unsqueeze(-1))
-
-
-        return decoded
-
-    def l_angle_def(self, theta_x, theta_y, theta_x_gt, theta_y_gt , type = 'paper'):
-        if type == 'paper':
-            l_x = (torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi) % (2*math.pi)
-            l_y = (torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi) % (2*math.pi)
-            l_angle = torch.add(l_x, l_y)
-            return l_angle
-        else:
-            l_x = (math.pi) - torch.abs((torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi))
-            l_y = (math.pi) - torch.abs((torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi))
-            l_angle = torch.add(l_x, l_y)
-            return l_angle
-
-    def loss_calculation(self, inputs, labels):
-        encoded=self.encoder(inputs)
-        encoded=encoded.unsqueeze(-1).unsqueeze(-1)
+        #unsqueezed=encoded.unsqueeze(-1).unsqueeze(-1)
         decoded=self.decoder(encoded)
+        # print torch.max(decoded)
+        # print torch.min(decoded)
 
-        print(decoded.shape)
-        l1_loss = torch.norm((decoded - labels['warped_bm']),p=1,dim=(1))
-        # angle loss noch
-        angles_map = angles.calc_angles_torch(decoded.transpose(1,2).transpose(2,3))
-        warped_angle = angles.warp_grid_torch(angles_map, labels['warped_uv'].transpose(1,2).transpose(2,3))
-        warped_angle.transpose(3,2).transpose(2,1)
-        theta_x = warped_angle[:,0:1,:,:]
-        theta_y = warped_angle[:,1:2,:,:]
-
-        theta_x_gt = labels['warped_angle_gt'][:,0:1,:,:]
-        theta_y_gt = labels['warped_angle_gt'][:,1:2,:,:]
-        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
-        l_angle = l_angle * labels['warped_text_mask']
-
-
-        loss = torch.mean(l1_loss)
-
-        return loss
-
-    def training_step(self, batch, batch_idx):
-        inputs, labels = batch
-        return self.loss_calculation(inputs, labels)
-
-    def validation_step(self, batch, batch_idx):
-        inputs, labels = batch
-        return self.loss_calculation(inputs, labels)
-
-    def test_step(self, batch, batch_idx):
-        inputs, labels = batch
-        return self.loss_calculation(inputs, labels)
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3, weight_decay=5e-4, amsgrad=True)
-        sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
-        return {
-        'optimizer': optimizer,
-        'lr_scheduler': {
-            'scheduler': sched,
-            'monitor': 'loss',
-            }
-        }
-        #return optimizer
+        return encoded, decoded#, unsqueezed#, decoded

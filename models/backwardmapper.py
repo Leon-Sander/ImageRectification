@@ -234,13 +234,15 @@ class Backwardmapper(pl.LightningModule):
     #img_size(h,w) -> ndim
     #out_channels  -> optical flow (x,y)
 
-    def __init__(self, img_size=256, in_channels=3, out_channels=2, filters=32,fc_units=100):
+    def __init__(self, img_size=256, in_channels=3, out_channels=2, filters=32,fc_units=100, lr = "1e-3", weight_decay=5e-4):
         super(Backwardmapper, self).__init__()
         self.nc=in_channels
         self.nf=filters
         self.ndim=img_size
         self.oc=out_channels
         self.fcu=fc_units
+        self.lr = lr
+        self.weight_decay = weight_decay
 
         self.encoder=waspDenseEncoder256(nc=self.nc+2,ndf=self.nf,ndim=self.ndim)
         self.decoder=waspDenseDecoder256(nz=self.ndim,nc=self.oc,ngf=self.nf)
@@ -328,9 +330,9 @@ class Backwardmapper(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3, weight_decay=5e-4, amsgrad=True)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay, amsgrad=True)
         sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
         return {
         'optimizer': optimizer,

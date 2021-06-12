@@ -10,9 +10,11 @@ import torch.nn.functional as F
 
 class crease(pl.LightningModule):
     def __init__(self, num_downs = 5, input_nc_wc = 3, output_nc_wc = 8, img_size = 256 , use_pre_trained = False, ngf_wc=64,
-                 norm_layer=nn.BatchNorm2d, use_dropout=False): #img_size
+                 norm_layer=nn.BatchNorm2d, use_dropout=False, lr = "1e-3", weight_decay=5e-4): #img_size
         super(crease, self).__init__()
 
+        self.lr = lr
+        self.weight_decay = weight_decay
         self.estimator3d = Estimator3d(input_nc = 3, output_nc = 8, num_downs = 5, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False)
         self.backward_map_estimator = Backwardmapper(img_size, in_channels=3, out_channels=2, filters=32,fc_units=100)
         if use_pre_trained:
@@ -114,9 +116,9 @@ class crease(pl.LightningModule):
         return loss
     
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3, weight_decay=5e-4, amsgrad=True)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay, amsgrad=True)
         sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
         return {
         'optimizer': optimizer,
