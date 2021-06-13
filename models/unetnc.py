@@ -37,6 +37,8 @@ class Estimator3d(pl.LightningModule):
         else:
             l_x = (math.pi) - torch.abs((torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi))
             l_y = (math.pi) - torch.abs((torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi))
+            #l_x = (math.pi) - torch.abs((torch.norm(torch.sub(theta_x, theta_x_gt),p=2,dim=(1)) - math.pi))
+            #l_y = (math.pi) - torch.abs((torch.norm(torch.sub(theta_y, theta_y_gt),p=2,dim=(1)) - math.pi))
             l_angle = torch.add(l_x, l_y)
             return l_angle
             
@@ -99,7 +101,7 @@ class Estimator3d(pl.LightningModule):
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
-        '''
+        
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay, amsgrad=True)
         sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
         return {
@@ -108,7 +110,7 @@ class Estimator3d(pl.LightningModule):
             'scheduler': sched,
             'monitor': 'loss',
             }
-        }'''
+        }#'''
 
 # Defines the Unet generator.
 # |num_downs|: number of downsamplings in UNet. For example,

@@ -12,8 +12,8 @@
             "data_path" : "Dataset Preview/Inv3D preview complete V2/data/",
             "batch_size_train" : 1,
             "gpus" : 1,
-            "max_epochs" : 10,
-            "save_name" : "wc_test"
+            "max_epochs" : 100,
+            "save_name" : "wc_test3"
 
         },   
 
@@ -29,7 +29,7 @@
             "data_path" : "Dataset Preview/Inv3D preview complete V2/data/",
             "batch_size_train" : 2,
             "gpus" : 1,
-            "max_epochs" : 10,
+            "max_epochs" : 500,
             "save_name" : "bm_test"
 
         },
@@ -40,7 +40,7 @@
             "input_nc_wc" : 3, 
             "output_nc_wc" : 8, 
             "img_size" : 256 , 
-            "use_pre_trained" : 0, 
+            "use_pre_trained" : 1, 
             "ngf_wc":64,
             "norm_layer":"nn.BatchNorm2d", 
             "use_dropout": 0, 
@@ -49,8 +49,10 @@
             "data_path" : "Dataset Preview/Inv3D preview complete V2/data/",
             "batch_size_train" : 2,
             "gpus" : 1,
-            "max_epochs" : 10,
-            "save_name" : "full_model_test"
+            "max_epochs" : 500,
+            "save_name" : "crease_test",
+            "load_3d" : "wc_test2",
+            "load_bm" : "bm_test"
 
         }
 

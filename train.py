@@ -23,6 +23,7 @@ def main(args):
                                     use_dropout= bool(config['train_wc']['use_dropout']),
                                     lr = config['train_wc']['lr'],
                                     weight_decay = config['train_wc']['weight_decay'])
+        #model.load_state_dict(torch.load('models/pretrained/wc_test2.pkl'))
 
         dataset_train = CustomImageDataset_wc(data_dir=DATA_PATH+'train/', transform=True)
         #dataset_val = CustomImageDataset_wc(data_dir=DATA_PATH+'val/', transform=True)
@@ -49,6 +50,7 @@ def main(args):
                                                 lr = config['train_backwardmapper']['lr'], 
                                                 weight_decay=config['train_backwardmapper']['weight_decay'])
 
+        #model_bm.load_state_dict(torch.load('models/pretrained/bm_test.pkl'))
         train_dataset_bm = Dataset_backward_mapping(data_dir=DATA_PATH+'train/')
         #dataset_val = CustomImageDataset_wc(data_dir=DATA_PATH+'val/', transform=True)
         #dataset_test = CustomImageDataset_wc(data_dir=DATA_PATH+'test/', transform=True)
@@ -56,9 +58,9 @@ def main(args):
         
         #val_loader = DataLoader(dataset_val, batch_size= config['train_wc']['batch_size_train'], num_workers=12)
         #test_loader = DataLoader(dataset_test, batch_size= config['train_wc']['batch_size_train'], num_workers=12)
-        train_loader = DataLoader(train_dataset_bm, batch_size= config['train_backwadmapper']['batch_size_train'], num_workers=12)
+        train_loader = DataLoader(train_dataset_bm, batch_size= config['train_backwardmapper']['batch_size_train'], num_workers=12)
         
-        trainer = pl.Trainer(gpus=config['train_backwardmapper']['gpus'], max_epochs = config['train_backwadmapper']['max_epochs'])
+        trainer = pl.Trainer(gpus=config['train_backwardmapper']['gpus'], max_epochs = config['train_backwardmapper']['max_epochs'])
         trainer.fit(model_bm, train_loader)
         torch.save(model_bm.state_dict(), 'models/pretrained/' + config['train_backwardmapper']['save_name'] + '.pkl')
         
@@ -72,9 +74,11 @@ def main(args):
                                 img_size = config['train_full']['img_size'], 
                                 use_pre_trained = bool(config['train_full']['use_pre_trained']), 
                                 ngf_wc=config['train_full']['ngf_wc'],
-                                use_dropout=bool(config['train_full']['use_droput']), 
+                                use_dropout=bool(config['train_full']['use_dropout']), 
                                 lr = config['train_full']['lr'], 
-                                weight_decay=config['train_full']['weight_decay'])
+                                weight_decay=config['train_full']['weight_decay'], 
+                                load_3d =config['train_full']['load_3d'],
+                                load_bm = config['train_full']['load_bm'])
 
         trainer = pl.Trainer(gpus=config['train_full']['gpus'], max_epochs = config['train_full']['max_epochs'])
         dataset_train = Dataset_full_model(data_dir=DATA_PATH+'train/')
