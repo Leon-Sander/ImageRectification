@@ -133,7 +133,7 @@ class waspDenseEncoder256(nn.Module):
     def __init__(self, nc=1, ndf = 32, ndim = 256, activation=nn.LeakyReLU, args=[0.2, False], f_activation=nn.Tanh, f_args=[]):
         super(waspDenseEncoder256, self).__init__()
         self.ndim = ndim
-
+        #f_activation=nn.Sigmoid
         self.main = nn.Sequential(
                 # input is (nc) x 128 x 128    256x256
                 nn.BatchNorm2d(nc),
@@ -181,6 +181,8 @@ class waspDenseEncoder256(nn.Module):
 class waspDenseDecoder256(nn.Module):
     def __init__(self, nz=256, nc=1, ngf=32, lb=0, ub=1, activation=nn.ReLU, args=[False], f_activation=nn.Hardtanh, f_args=[]):
         super(waspDenseDecoder256, self).__init__()
+
+        #f_activation=nn.Sigmoid
         self.main   = nn.Sequential(
             # input is Z, going into convolution
             nn.BatchNorm2d(nz),
@@ -243,6 +245,7 @@ class Backwardmapper(pl.LightningModule):
         self.fcu=fc_units
         self.lr = lr
         self.weight_decay = weight_decay
+        self.L1_loss = nn.L1Loss(reduction='none')
 
         self.encoder=waspDenseEncoder256(nc=self.nc+2,ndf=self.nf,ndim=self.ndim)
         self.decoder=waspDenseDecoder256(nz=self.ndim,nc=self.oc,ngf=self.nf)
@@ -292,8 +295,8 @@ class Backwardmapper(pl.LightningModule):
         #encoded=encoded.unsqueeze(-1).unsqueeze(-1)
         decoded=self.decoder(encoded)
 
-        
-        l1_loss = torch.norm((decoded - labels['warped_bm']),p=1,dim=(1))
+        l1_loss = self.L1_loss(decoded,labels['warped_bm'])
+        #l1_loss = torch.norm((decoded - labels['warped_bm']),p=1,dim=(1))
         # angle loss noch
         angles_map = angles.calc_angles_torch(decoded.transpose(1,2).transpose(2,3))
         warped_angle = angles.warp_grid_torch(angles_map, labels['warped_uv'].transpose(1,2).transpose(2,3))

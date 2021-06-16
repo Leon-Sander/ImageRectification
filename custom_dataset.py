@@ -185,7 +185,7 @@ class Dataset_backward_mapping(Dataset):
         lbl[:,:,1]= (lbl[:,:,1]-ymn)/(ymx-ymn)
         lbl[:,:,2]= (lbl[:,:,2]-xmn)/(xmx-xmn)
         lbl=cv2.bitwise_and(lbl,lbl,mask=msk)
-        lbl = cv2.resize(lbl, self.img_size, interpolation=cv2.INTER_NEAREST)
+        #lbl = cv2.resize(lbl, self.img_size, interpolation=cv2.INTER_NEAREST)
         lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
         lbl = np.array(lbl, dtype=np.float64)
         lbl = torch.from_numpy(lbl).float()

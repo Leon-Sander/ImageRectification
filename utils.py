@@ -8,10 +8,10 @@ import matplotlib.pyplot as plt
 from models.backwardmapper import Backwardmapper
 
 crease_model = crease()
-crease_model.load_state_dict(torch.load('models/pretrained/crease_test.pkl'))
+#crease_model.load_state_dict(torch.load('models/pretrained/crease_test.pkl'))
 
 bm_model = Backwardmapper()
-bm_model.load_state_dict(torch.load('models/pretrained/bm_test.pkl'))
+bm_model.load_state_dict(torch.load('models/pretrained/bm_test2.pkl'))
 
 def plt_result_crease(path):
 
