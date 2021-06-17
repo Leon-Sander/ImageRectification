@@ -14,6 +14,7 @@ import numpy as np
 import pytorch_lightning as pl
 import angles
 import math
+import utils
 
 
 def add_coordConv_channels(t):
@@ -309,7 +310,10 @@ class Backwardmapper(pl.LightningModule):
         l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
         l_angle = l_angle * labels['warped_text_mask']
 
-
+        ssim = utils.unwarp_and_ssim(decoded, labels['warped_bm'], labels['img'])
+        self.log("ssim", ssim)
+        
+        
         #loss = torch.mean(l1_loss + l_angle)
         loss = torch.mean(l1_loss)
         return loss

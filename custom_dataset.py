@@ -170,6 +170,7 @@ class Dataset_backward_mapping(Dataset):
         labels['warped_uv'] = np.load(data_path + '/warped_UV.npz')['warped_UV']
         labels['warped_angle'] = np.load(data_path + '/warped_angle.npz')['warped_angle']
         labels['warped_text_mask'] = np.load(data_path + '/warped_text_mask.npz')['warped_text_mask']
+        labels['img'] = cv2.imread(data_path + '/warped_document.png')
 
         if self.transform:
             input, labels = self.transform_data(input, labels)
@@ -192,12 +193,19 @@ class Dataset_backward_mapping(Dataset):
         input = lbl
 
         for label in labels:
+            
+            if label == 'img':
+                img = labels[label]
+                img = img.transpose(2, 0, 1)
+                img = img / 255
+                labels[label] = img
+            else:
 
-            lbl = labels[label]
-            lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
-            lbl = np.array(lbl, dtype=np.float64)
-            lbl = torch.from_numpy(lbl).float()
-            labels[label] = lbl
+                lbl = labels[label]
+                lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
+                lbl = np.array(lbl, dtype=np.float64)
+                lbl = torch.from_numpy(lbl).float()
+                labels[label] = lbl
 
         return input, labels
 

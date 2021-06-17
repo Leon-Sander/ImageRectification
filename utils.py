@@ -18,7 +18,17 @@ ssim = SSIM()
 #bm_model = Backwardmapper()
 #bm_model.load_state_dict(torch.load('models/pretrained/bm_test2.pkl'))
 
-def compare_ssim(path, bm_model):
+def unwarp_and_ssim(bm, bm_gt, img):
+
+    unwarped_image_pred = unwarp_image(img,bm)
+    unwarped_image_gt = unwarp_image(img,bm_gt)
+
+
+
+    return ssim.forward(unwarped_image_pred, unwarped_image_gt)
+
+
+def compare_ssim_all(path, bm_model):
     
 
     img = load_warped_document(path)
