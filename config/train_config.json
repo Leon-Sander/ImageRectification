@@ -29,7 +29,7 @@
             "data_path" : "Dataset Preview/Inv3D preview complete V2/data/",
             "batch_size_train" : 2,
             "gpus" : 1,
-            "max_epochs" : 300,
+            "max_epochs" : 250,
             "save_name" : "bm_test"
 
         },

@@ -6,16 +6,35 @@ import cv2
 from models.full_model import crease
 import matplotlib.pyplot as plt
 from models.backwardmapper import Backwardmapper
+from pytorch_ssim_.pytorch_ssim import SSIM
 
-crease_model = crease()
+
+
+ssim = SSIM()
+
+#crease_model = crease()
 #crease_model.load_state_dict(torch.load('models/pretrained/crease_test.pkl'))
 
-bm_model = Backwardmapper()
-bm_model.load_state_dict(torch.load('models/pretrained/bm_test2.pkl'))
+#bm_model = Backwardmapper()
+#bm_model.load_state_dict(torch.load('models/pretrained/bm_test2.pkl'))
 
-def plt_result_crease(path):
+def compare_ssim(path, bm_model):
+    
 
-    img = load_img(path)
+    img = load_warped_document(path)
+    wc = load_wc(path)
+
+    bm = bm_model(wc.unsqueeze(0))
+    unwarped_image_pred = unwarp_image(img,bm)
+    unwarped_image_gt = unwarp_image(img,load_bm(path).unsqueeze(0))
+
+    print(ssim(unwarped_image_pred, unwarped_image_gt))
+
+
+
+def plt_result_crease(path, crease_model):
+
+    img = load_warped_document(path)
     bm = crease_model(img)
     unwarped_image_pred = unwarp_image(img,bm)
     unwarped_image_gt = unwarp_image(img,load_bm(path).unsqueeze(0))
@@ -33,9 +52,9 @@ def plt_result_crease(path):
     plt.axis('off')
 
 
-def plt_result_bm(path):
+def plt_result_bm(path, bm_model):
 
-    img = load_img(path)
+    img = load_warped_document(path)
     wc = load_wc(path)
 
     bm = bm_model(wc.unsqueeze(0))
@@ -81,7 +100,7 @@ def load_bm(path):
     lbl = torch.from_numpy(lbl).float()
     return lbl
 
-def load_img(path):
+def load_warped_document(path):
     img = cv2.imread(path + '/warped_document.png')
     #img = dataset_train.transform_img(img)
     img = img.transpose(2, 0, 1)
