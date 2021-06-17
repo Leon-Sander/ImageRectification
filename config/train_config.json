@@ -24,13 +24,13 @@
             "out_channels" : 2, 
             "filters" : 32,
             "fc_units" : 100,
-            "lr" : 1e-5, 
+            "lr" : 1e-3, 
             "weight_decay" : 5e-4,
             "data_path" : "Dataset Preview/Inv3D preview complete V2/data/",
             "batch_size_train" : 2,
             "gpus" : 1,
-            "max_epochs" : 100,
-            "save_name" : "bm_test2"
+            "max_epochs" : 300,
+            "save_name" : "bm_test"
 
         },
 

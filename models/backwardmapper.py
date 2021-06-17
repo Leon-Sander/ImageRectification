@@ -310,8 +310,8 @@ class Backwardmapper(pl.LightningModule):
         l_angle = l_angle * labels['warped_text_mask']
 
 
-        loss = torch.mean(l1_loss + l_angle)
-        #loss = torch.mean(l1_loss)
+        #loss = torch.mean(l1_loss + l_angle)
+        loss = torch.mean(l1_loss)
         return loss
 
     def training_step(self, batch, batch_idx):
