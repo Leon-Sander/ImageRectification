@@ -1,5 +1,6 @@
 
 import torch.nn.functional as F
+import torch.nn as nn
 import numpy as np
 import torch
 import cv2
@@ -17,6 +18,18 @@ ssim = SSIM()
 
 #bm_model = Backwardmapper()
 #bm_model.load_state_dict(torch.load('models/pretrained/bm_test2.pkl'))
+
+
+
+def compare_l1(path, bm_model):
+    L1_loss = nn.L1Loss(reduction='none')
+    wc = load_wc(path)
+    bm_gt = load_bm(path).unsqueeze(0)
+    bm = bm_model(wc.unsqueeze(0))
+
+    l1_loss = L1_loss(bm,bm_gt)
+    return l1_loss
+
 
 def unwarp_and_ssim(bm, bm_gt, img):
     #ic(bm.shape)
@@ -127,6 +140,17 @@ def load_warped_document(path):
     
     img = torch.from_numpy(img).float()
     img = img.unsqueeze(0)#.transpose(2,3).transpose
+    img = img / 255
+    return img
+
+
+def load_warped_document_chw(path):
+    #### img gets loaded with shape (n,c,h,w)
+    img = cv2.imread(path + '/warped_document.png')
+    #img = dataset_train.transform_img(img)
+    img = img.transpose(2, 0, 1)
+    
+    img = torch.from_numpy(img).float()
     img = img / 255
     return img
 

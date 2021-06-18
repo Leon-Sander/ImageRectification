@@ -1,5 +1,12 @@
 ## Image Rectification
 
+#### Setup
+clone the ssim into this repo
+https://github.com/Po-Hsun-Su/pytorch-ssim.git
+rename folder to pytorch_ssim_
+
+*todo: auf pip install umbauen*
+
 #### Train models
 
 There are three models:
