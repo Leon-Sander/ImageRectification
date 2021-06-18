@@ -50,7 +50,9 @@ def main(args):
                                                 lr = config['train_backwardmapper']['lr'], 
                                                 weight_decay=config['train_backwardmapper']['weight_decay'])
 
-        #model_bm.load_state_dict(torch.load('models/pretrained/bm_test2.pkl'))
+        if bool(config['train_backwardmapper']['use_pre_trained']):
+
+            model_bm.load_state_dict(torch.load('models/pretrained/' + config['train_backwardmapper']['use_pretrained_model_name'] + '.pkl'))
         train_dataset_bm = Dataset_backward_mapping(data_dir=DATA_PATH+'train/')
         #dataset_val = CustomImageDataset_wc(data_dir=DATA_PATH+'val/', transform=True)
         #dataset_test = CustomImageDataset_wc(data_dir=DATA_PATH+'test/', transform=True)

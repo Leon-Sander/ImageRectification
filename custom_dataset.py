@@ -197,6 +197,8 @@ class Dataset_backward_mapping(Dataset):
             if label == 'img':
                 img = labels[label]
                 img = img.transpose(2, 0, 1)
+                img = torch.from_numpy(img).float()
+                
                 img = img / 255
                 labels[label] = img
             else:

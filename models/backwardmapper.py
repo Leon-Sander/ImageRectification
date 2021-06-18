@@ -15,6 +15,7 @@ import pytorch_lightning as pl
 import angles
 import math
 import utils
+from icecream import ic
 
 
 def add_coordConv_channels(t):
@@ -309,13 +310,19 @@ class Backwardmapper(pl.LightningModule):
         theta_y_gt = labels['warped_angle'][:,1:2,:,:]
         l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
         l_angle = l_angle * labels['warped_text_mask']
-
-        ssim = utils.unwarp_and_ssim(decoded, labels['warped_bm'], labels['img'])
-        self.log("ssim", ssim)
+        
+        #ic(labels['img'].shape)
+        #decoded.cpu() 
+        #labels['warped_bm'].cpu() 
+        #labels['img'].cpu()
+        for i in range(inputs.shape[0]):
+            #ic(labels['img'][i].unsqueeze(0).shape)
+            ssim = utils.unwarp_and_ssim(decoded[i].unsqueeze(0), labels['warped_bm'][i].unsqueeze(0), labels['img'][i].unsqueeze(0))
+            self.log("ssim", ssim,on_step=True)
         
         
-        #loss = torch.mean(l1_loss + l_angle)
-        loss = torch.mean(l1_loss)
+        loss = torch.mean(l1_loss + l_angle)
+        #loss = torch.mean(l1_loss)
         return loss
 
     def training_step(self, batch, batch_idx):

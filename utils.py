@@ -3,11 +3,11 @@ import torch.nn.functional as F
 import numpy as np
 import torch
 import cv2
-from models.full_model import crease
+#from models.full_model import crease
 import matplotlib.pyplot as plt
-from models.backwardmapper import Backwardmapper
+#from models.backwardmapper import Backwardmapper
 from pytorch_ssim_.pytorch_ssim import SSIM
-
+from icecream import ic
 
 
 ssim = SSIM()
@@ -19,12 +19,15 @@ ssim = SSIM()
 #bm_model.load_state_dict(torch.load('models/pretrained/bm_test2.pkl'))
 
 def unwarp_and_ssim(bm, bm_gt, img):
+    #ic(bm.shape)
+    #ic(bm_gt.shape)
+    #ic(img.shape)
+    unwarped_image_pred = unwarp_image_ssmi(img,bm)
+    unwarped_image_gt = unwarp_image_ssmi(img,bm_gt)
 
-    unwarped_image_pred = unwarp_image(img,bm)
-    unwarped_image_gt = unwarp_image(img,bm_gt)
 
-
-
+    #ic(unwarped_image_pred.shape)
+    #ic(unwarped_image_gt.shape)
     return ssim.forward(unwarped_image_pred, unwarped_image_gt)
 
 
@@ -35,8 +38,8 @@ def compare_ssim_all(path, bm_model):
     wc = load_wc(path)
 
     bm = bm_model(wc.unsqueeze(0))
-    unwarped_image_pred = unwarp_image(img,bm)
-    unwarped_image_gt = unwarp_image(img,load_bm(path).unsqueeze(0))
+    unwarped_image_pred = unwarp_image_ssmi(img,bm)
+    unwarped_image_gt = unwarp_image_ssmi(img,load_bm(path).unsqueeze(0))
 
     print(ssim(unwarped_image_pred, unwarped_image_gt))
 
@@ -71,16 +74,22 @@ def plt_result_bm(path, bm_model):
     unwarped_image_pred = unwarp_image(img,bm)
     unwarped_image_gt = unwarp_image(img,load_bm(path).unsqueeze(0))
 
+    unwarped_image_pred_ssmi = unwarp_image_ssmi(img,bm)
+    unwarped_image_gt_ssmi = unwarp_image_ssmi(img,load_bm(path).unsqueeze(0))
+
+    ssim_metric = ssim(unwarped_image_pred_ssmi, unwarped_image_gt_ssmi)
+
 
     fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(15,5))
     ax1.imshow(img[0].transpose(0,1).transpose(1,2))
     ax1.set_title('Warped Image')
 
     ax2.imshow(unwarped_image_pred)
-    ax2.set_title('Model Prediction')
+    ax2.set_title('Prediction, ssmi to gt: ' + str(ssim_metric))
 
     ax3.imshow(unwarped_image_gt)
     ax3.set_title('Unwarped image gt')
+    
     plt.axis('off')
 
 def load_wc(path):
@@ -111,9 +120,11 @@ def load_bm(path):
     return lbl
 
 def load_warped_document(path):
+    #### img gets loaded with shape (n,c,h,w)
     img = cv2.imread(path + '/warped_document.png')
     #img = dataset_train.transform_img(img)
     img = img.transpose(2, 0, 1)
+    
     img = torch.from_numpy(img).float()
     img = img.unsqueeze(0)#.transpose(2,3).transpose
     img = img / 255
@@ -122,7 +133,8 @@ def load_warped_document(path):
 #@staticmethod
 def unwarp_image(img, bm):
     #assert bm.shape[3] == 2, "BM shape needs to be (N, H, W, C)"
-    
+    #ic(img.shape)
+    #ic(bm.shape)
     n, c, h, w = img.shape
 
     #bm = bm.transpose(3, 2).transpose(2, 1)
@@ -135,5 +147,33 @@ def unwarp_image(img, bm):
     img = img.float()
     res = F.grid_sample(input=img, grid=bm, align_corners=True) # align_corners=True -> old behaviour
     res = torch.clamp(res, 0, 1) # clip values because of numerical instabilities
-    res = res.transpose(1,2).transpose(2,3).detach().numpy()[0]
+    res = res.transpose(1,2).transpose(2,3)#.detach()
+    #ic(res)
+    res = res.detach().cpu()
+    res = res.numpy()[0]
+    return res
+
+def unwarp_image_ssmi(img, bm):
+    #assert bm.shape[3] == 2, "BM shape needs to be (N, H, W, C)"
+    #ic(img.shape)
+    #ic(bm.shape)
+    n, c, h, w = img.shape
+
+    #bm = bm.transpose(3, 2).transpose(2, 1)
+    bm = F.interpolate(bm, size=(h, w), mode='bilinear', align_corners=True) # align_corners=True -> old behaviour
+    bm = bm.transpose(1, 2).transpose(2, 3)
+
+    bm = 2 * bm - 1 # adapt value range for grid_sample
+    bm = bm.transpose(1, 2) # rotate image by 90 degrees (NOTE: this transformation might be deleted in future BM versions)
+    
+    img = img.float()
+    res = F.grid_sample(input=img, grid=bm, align_corners=True) # align_corners=True -> old behaviour
+    res = torch.clamp(res, 0, 1) # clip values because of numerical instabilities
+    #res.unsqueeze(0)
+    #res = res.transpose(1,2).transpose(2,3)#.detach()
+    #ic(res)
+    res = res.detach().cpu()
+    #res = res.numpy()#[0]
+    #res = np.array(res, dtype=np.float64)
+    #ic(res.shape)
     return res
