@@ -201,3 +201,22 @@ def unwarp_image_ssmi(img, bm):
     #res = np.array(res, dtype=np.float64)
     #ic(res.shape)
     return res
+
+def unwarp_image_logging(img, bm):
+    #assert bm.shape[3] == 2, "BM shape needs to be (N, H, W, C)"
+    
+    n, c, h, w = img.shape
+
+    #bm = bm.transpose(3, 2).transpose(2, 1)
+    bm = F.interpolate(bm, size=(h, w), mode='bilinear', align_corners=True) # align_corners=True -> old behaviour
+    bm = bm.transpose(1, 2).transpose(2, 3)
+
+    bm = 2 * bm - 1 # adapt value range for grid_sample
+    bm = bm.transpose(1, 2) # rotate image by 90 degrees (NOTE: this transformation might be deleted in future BM versions)
+    
+    img = img.float()
+    res = F.grid_sample(input=img, grid=bm, align_corners=True) # align_corners=True -> old behaviour
+    res = torch.clamp(res, 0, 1) # clip values because of numerical instabilities
+    #res = res.transpose(1,2).transpose(2,3).detach()
+    res = res.detach().cpu().numpy()[0]
+    return res

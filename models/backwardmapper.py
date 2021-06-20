@@ -320,7 +320,12 @@ class Backwardmapper(pl.LightningModule):
             ssim = utils.unwarp_and_ssim(decoded[i].unsqueeze(0), labels['warped_bm'][i].unsqueeze(0), labels['img'][i].unsqueeze(0))
             self.log("ssim", ssim,on_step=True)
         
-        
+            unwarped_image = utils.unwarp_image_logging(labels['img'][i].unsqueeze(0),decoded[i].unsqueeze(0))
+            tensorboard = self.logger.experiment
+            tensorboard.add_image('Unwarped_image_' + str(i),unwarped_image, self.global_step)
+
+
+
         loss = torch.mean(l1_loss + l_angle)
         #loss = torch.mean(l1_loss)
         return loss
