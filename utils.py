@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 #from models.backwardmapper import Backwardmapper
 from pytorch_ssim_.pytorch_ssim import SSIM
 from icecream import ic
-
+import random
 
 ssim = SSIM()
 
@@ -219,4 +219,90 @@ def unwarp_image_logging(img, bm):
     res = torch.clamp(res, 0, 1) # clip values because of numerical instabilities
     #res = res.transpose(1,2).transpose(2,3).detach()
     res = res.detach().cpu().numpy()[0]
+    return res
+
+def tight_crop_wc_bm( wc, bm):
+    msk=((wc[:,:,0]!=0)&(wc[:,:,1]!=0)&(wc[:,:,2]!=0)).astype(np.uint8)
+    size=msk.shape
+    [y, x] = (msk).nonzero()
+    minx = min(x)
+    maxx = max(x)
+    miny = min(y)
+    maxy = max(y)
+    wc = wc[miny : maxy + 1, minx : maxx + 1, :]
+
+    
+    s = 20
+    wc = np.pad(wc, ((s, s), (s, s), (0, 0)), 'constant')
+
+    cx1 = random.randint(0, s - 5)
+    cx2 = random.randint(0, s - 5) + 1
+    cy1 = random.randint(0, s - 5)
+    cy2 = random.randint(0, s - 5) + 1
+
+    wc = wc[cy1 : -cy2, cx1 : -cx2, :]
+
+    t=miny-s+cy1
+    b=size[0]-maxy-s+cy2
+    l=minx-s+cx1
+    r=size[1]-maxx-s+cx2
+
+    img_size = (256,256)
+
+
+    msk=((wc[:,:,0]!=0)&(wc[:,:,1]!=0)&(wc[:,:,2]!=0)).astype(np.uint8)*255
+    #normalize label
+    xmx, xmn, ymx, ymn,zmx, zmn= 1.0858383, -1.0862498, 0.8847823, -0.8838696, 0.31327668, -0.30930856 
+    wc[:,:,0]= (wc[:,:,0]-zmn)/(zmx-zmn)
+    wc[:,:,1]= (wc[:,:,1]-ymn)/(ymx-ymn)
+    wc[:,:,2]= (wc[:,:,2]-xmn)/(xmx-xmn)
+    wc=cv2.bitwise_and(wc,wc,mask=msk)
+    
+    wc = cv2.resize(wc, img_size) 
+    wc = wc.astype(float) / 255.0
+    wc = wc.transpose(2, 0, 1) # NHWC -> NCHW
+    wc = np.array(wc, dtype=np.float64)
+    wc = torch.from_numpy(wc).float()
+
+    bm = bm.astype(float)
+    #normalize label [-1,1]
+    bm[:,:,1]=bm[:,:,1]-t
+    bm[:,:,0]=bm[:,:,0]-l
+    bm=bm/np.array([256.0-l-r, 256.0-t-b])
+    bm=(bm-0.5)*2
+
+    bm0=cv2.resize(bm[:,:,0],(img_size[0],img_size[1]))
+    bm1=cv2.resize(bm[:,:,1],(img_size[0],img_size[1]))
+    
+    #img=np.concatenate([alb,wc],axis=0)
+    bm=np.stack([bm0,bm1],axis=-1)
+
+    #img = torch.from_numpy(img).float()
+    bm = torch.from_numpy(bm).float()
+
+
+
+    return wc, bm
+
+
+def unwarp_image_crop(img, bm):
+    #assert bm.shape[3] == 2, "BM shape needs to be (N, H, W, C)"
+    #ic(img.shape)
+    #ic(bm.shape)
+    n, c, h, w = img.shape
+
+    bm = bm.transpose(3, 2).transpose(2, 1)
+    bm = F.interpolate(bm, size=(h, w), mode='bilinear', align_corners=True) # align_corners=True -> old behaviour
+    bm = bm.transpose(1, 2).transpose(2, 3)
+
+    bm = 2 * bm - 1 # adapt value range for grid_sample
+    #bm = bm.transpose(1, 2) # rotate image by 90 degrees (NOTE: this transformation might be deleted in future BM versions)
+    
+    img = img.float()
+    res = F.grid_sample(input=img, grid=bm, align_corners=True) # align_corners=True -> old behaviour
+    res = torch.clamp(res, 0, 1) # clip values because of numerical instabilities
+    res = res.transpose(1,2).transpose(2,3)#.detach()
+    #ic(res)
+    res = res.detach().cpu()
+    res = res.numpy()[0]
     return res
