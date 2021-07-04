@@ -248,6 +248,7 @@ class Backwardmapper(pl.LightningModule):
         self.lr = lr
         self.weight_decay = weight_decay
         self.L1_loss = nn.L1Loss(reduction='none')
+        #self.tensorboard = self.logger.experiment
 
         self.encoder=waspDenseEncoder256(nc=self.nc+2,ndf=self.nf,ndim=self.ndim)
         self.decoder=waspDenseDecoder256(nz=self.ndim,nc=self.oc,ngf=self.nf)
@@ -292,7 +293,7 @@ class Backwardmapper(pl.LightningModule):
             l_angle = torch.add(l_x, l_y)
             return l_angle
 
-    def loss_calculation(self, inputs, labels):
+    def loss_calculation(self, inputs, labels, log_type = 'train'):
         encoded=self.encoder(inputs)
         #encoded=encoded.unsqueeze(-1).unsqueeze(-1)
         decoded=self.decoder(encoded)
@@ -311,18 +312,8 @@ class Backwardmapper(pl.LightningModule):
         l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
         l_angle = l_angle * labels['warped_text_mask']
         
-        #ic(labels['img'].shape)
-        #decoded.cpu() 
-        #labels['warped_bm'].cpu() 
-        #labels['img'].cpu()
-        for i in range(inputs.shape[0]):
-            #ic(labels['img'][i].unsqueeze(0).shape)
-            ssim = utils.unwarp_and_ssim(decoded[i].unsqueeze(0), labels['warped_bm'][i].unsqueeze(0), labels['img'][i].unsqueeze(0))
-            self.log("ssim", ssim,on_step=True)
-        
-            unwarped_image = utils.unwarp_image_logging(labels['img'][i].unsqueeze(0),decoded[i].unsqueeze(0))
-            tensorboard = self.logger.experiment
-            tensorboard.add_image('Unwarped_image_' + str(i),unwarped_image, self.global_step)
+        self.log_ssim(inputs, decoded, labels, log_type)
+
 
 
 
@@ -330,21 +321,31 @@ class Backwardmapper(pl.LightningModule):
         #loss = torch.mean(l1_loss)
         return loss
 
+    def log_ssim(self, inputs, decoded, labels, log_type):
+        for i in range(inputs.shape[0]):
+            #ic(labels['img'][i].unsqueeze(0).shape)
+            ssim = utils.unwarp_and_ssim(decoded[i].unsqueeze(0), labels['warped_bm'][i].unsqueeze(0), labels['img'][i].unsqueeze(0))
+            self.log('ssim_' + log_type, ssim,on_step=True)
+            tensorboard = self.logger.experiment
+
+            unwarped_image = utils.unwarp_image_logging(labels['img'][i].unsqueeze(0),decoded[i].unsqueeze(0))
+            tensorboard.add_image('Unwarped_image_' + str(i),unwarped_image, self.global_step)
+
     def training_step(self, batch, batch_idx):
         inputs, labels = batch
         loss = self.loss_calculation(inputs, labels)
-        self.log("train_loss", loss)
+        self.log("train_loss", loss,on_step=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
         inputs, labels = batch
-        loss = self.loss_calculation(inputs, labels)
+        loss = self.loss_calculation(inputs, labels, log_type = 'val')
         self.log("validation_loss", loss)
         return loss
 
     def test_step(self, batch, batch_idx):
         inputs, labels = batch
-        loss = self.loss_calculation(inputs, labels)
+        loss = self.loss_calculation(inputs, labels, log_type = 'test')
         self.log("test_loss", loss)
         return loss
 

@@ -13,7 +13,8 @@
             "batch_size_train" : 1,
             "gpus" : 1,
             "max_epochs" : 100,
-            "save_name" : "wc_test3"
+            "save_name" : "wc_test3",
+            "log_every_n_steps" : 5
 
         },   
 
@@ -29,10 +30,11 @@
             "data_path" : "Dataset Preview/Inv3D preview complete V2/data/test_leon/",
             "batch_size_train" : 2,
             "gpus" : 1,
-            "max_epochs" : 300,
-            "save_name" : "bm_test_2_images",
+            "max_epochs" : 10,
+            "save_name" : "log_test",
             "use_pretrained" : 1,
-            "use_pretrained_model_name" : "bm_test_2_images"
+            "use_pretrained_model_name" : "bm_test_2_images",
+            "log_every_n_steps" : 5
 
         },
 
@@ -54,7 +56,8 @@
             "max_epochs" : 500,
             "save_name" : "crease_test",
             "load_3d" : "wc_test2",
-            "load_bm" : "bm_test"
+            "load_bm" : "bm_test",
+            "log_every_n_steps" : 5
 
         }
 

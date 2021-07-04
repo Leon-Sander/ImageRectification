@@ -6,6 +6,8 @@ import argparse
 import sys
 import json
 import torch
+from pytorch_lightning.loggers import TensorBoardLogger
+
 
 def main(args):
 
@@ -34,7 +36,8 @@ def main(args):
         #test_loader = DataLoader(dataset_test, batch_size= config['train_wc']['batch_size_train'], num_workers=12)
 
 
-        trainer = pl.Trainer(gpus=config['train_wc']['gpus'], max_epochs = config['train_wc']['max_epochs'])
+        trainer = pl.Trainer(gpus=config['train_wc']['gpus'], max_epochs = config['train_wc']['max_epochs'],
+                            log_every_n_steps=config['train_wc']['log_every_n_steps'])
         trainer.fit(model, train_loader)
         torch.save(model.state_dict(), 'models/pretrained/' + config['train_wc']['save_name'] + '.pkl')
 
@@ -50,7 +53,7 @@ def main(args):
                                                 lr = config['train_backwardmapper']['lr'], 
                                                 weight_decay=config['train_backwardmapper']['weight_decay'])
 
-        if bool(config['train_backwardmapper']['use_pre_trained']):
+        if bool(config['train_backwardmapper']['use_pretrained']):
 
             model_bm.load_state_dict(torch.load('models/pretrained/' + config['train_backwardmapper']['use_pretrained_model_name'] + '.pkl'))
         train_dataset_bm = Dataset_backward_mapping(data_dir=DATA_PATH+'train/')
@@ -62,7 +65,10 @@ def main(args):
         #test_loader = DataLoader(dataset_test, batch_size= config['train_wc']['batch_size_train'], num_workers=12)
         train_loader = DataLoader(train_dataset_bm, batch_size= config['train_backwardmapper']['batch_size_train'], num_workers=12)
         
-        trainer = pl.Trainer(gpus=config['train_backwardmapper']['gpus'], max_epochs = config['train_backwardmapper']['max_epochs'])
+
+        #logger = TensorBoardLogger("tb_logs", name=config['train_backwardmapper']['save_name'])
+        trainer = pl.Trainer(gpus=config['train_backwardmapper']['gpus'], max_epochs = config['train_backwardmapper']['max_epochs'],
+                            log_every_n_steps=config['train_backwardmapper']['log_every_n_steps'])
         trainer.fit(model_bm, train_loader)
         torch.save(model_bm.state_dict(), 'models/pretrained/' + config['train_backwardmapper']['save_name'] + '.pkl')
         
@@ -82,7 +88,8 @@ def main(args):
                                 load_3d =config['train_full']['load_3d'],
                                 load_bm = config['train_full']['load_bm'])
 
-        trainer = pl.Trainer(gpus=config['train_full']['gpus'], max_epochs = config['train_full']['max_epochs'])
+        trainer = pl.Trainer(gpus=config['train_full']['gpus'], max_epochs = config['train_full']['max_epochs'],
+                            log_every_n_steps=config['train_full']['log_every_n_steps'])
         dataset_train = Dataset_full_model(data_dir=DATA_PATH+'train/')
         train_loader = DataLoader(dataset_train, batch_size= config['train_full']['batch_size_train'], num_workers=12)
         trainer.fit(model, train_loader)
