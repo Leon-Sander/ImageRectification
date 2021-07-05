@@ -30,9 +30,9 @@
             "data_path" : "Dataset Preview/Inv3D preview complete V2/data/test_leon/",
             "batch_size_train" : 2,
             "gpus" : 1,
-            "max_epochs" : 10,
-            "save_name" : "log_test",
-            "use_pretrained" : 1,
+            "max_epochs" : 50,
+            "save_name" : "crop_test",
+            "use_pretrained" : 0,
             "use_pretrained_model_name" : "bm_test_2_images",
             "log_every_n_steps" : 5
 

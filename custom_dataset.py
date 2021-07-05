@@ -8,7 +8,7 @@ from PIL import Image
 from numpy import asarray
 import cv2
 from pathlib import Path
-
+from icecream import ic
 
 class CustomImageDataset_wc(Dataset):
     """Dataset creation based on pytorch Dataset
@@ -173,10 +173,53 @@ class Dataset_backward_mapping(Dataset):
         labels['img'] = cv2.imread(data_path + '/warped_document.png')
 
         if self.transform:
+            input, labels = self.tight_crop_all(input,labels)
             input, labels = self.transform_data(input, labels)
 
         return input, labels
     
+    def tight_crop_all(self, fm, labels):
+        
+        msk=((fm[:,:,0]!=0)&(fm[:,:,1]!=0)&(fm[:,:,2]!=0)).astype(np.uint8)
+        size=msk.shape
+        [y, x] = (msk).nonzero()
+    
+        minx = min(x)
+        maxx = max(x)
+        miny = min(y)
+        maxy = max(y)
+        
+        fm = fm[miny : maxy + 1, minx : maxx + 1, :]
+
+        for label in labels:
+            if label != 'warped_bm':
+                im = labels[label]
+                im = np.array(im, dtype=np.float64)
+                #ic(label, im.shape)
+                im = im[miny : maxy + 1, minx : maxx + 1, :]
+                im = cv2.resize(im, self.img_size, interpolation=cv2.INTER_NEAREST)
+                if label == 'warped_text_mask':
+                    im = np.expand_dims(im, axis=2)
+                #ic(label, im.shape)
+                labels[label] = im
+            else:
+
+                t=miny
+                b=size[0]-maxy
+                l=minx
+                r=size[1]-maxx
+
+                bm = labels[label]
+                bm = np.array(bm, dtype=np.float64)
+
+                bm = bm*255
+                bm[:,:,1]=bm[:,:,1]-t
+                bm[:,:,0]=bm[:,:,0]-l
+                bm=bm/np.array([float(self.img_size[0])-l-r, float(self.img_size[1])-t-b])
+                labels[label] = bm
+
+        return fm, labels
+
     def transform_data(self, input, labels):
         lbl = input
         msk=((lbl[:,:,0]!=0)&(lbl[:,:,1]!=0)&(lbl[:,:,2]!=0)).astype(np.uint8)*255
@@ -186,14 +229,14 @@ class Dataset_backward_mapping(Dataset):
         lbl[:,:,1]= (lbl[:,:,1]-ymn)/(ymx-ymn)
         lbl[:,:,2]= (lbl[:,:,2]-xmn)/(xmx-xmn)
         lbl=cv2.bitwise_and(lbl,lbl,mask=msk)
-        #lbl = cv2.resize(lbl, self.img_size, interpolation=cv2.INTER_NEAREST)
+        lbl = cv2.resize(lbl, self.img_size, interpolation=cv2.INTER_NEAREST)
         lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
         lbl = np.array(lbl, dtype=np.float64)
         lbl = torch.from_numpy(lbl).float()
         input = lbl
-
+        #ic(input.shape)
         for label in labels:
-            
+            #ic(label, lbl.shape)
             if label == 'img':
                 img = labels[label]
                 img = img.transpose(2, 0, 1)
@@ -204,6 +247,7 @@ class Dataset_backward_mapping(Dataset):
             else:
 
                 lbl = labels[label]
+                
                 lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
                 lbl = np.array(lbl, dtype=np.float64)
                 lbl = torch.from_numpy(lbl).float()

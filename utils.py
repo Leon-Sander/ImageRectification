@@ -347,10 +347,30 @@ def tight_crop_im_wc(im, fm):
     return im, fm
 
 def tight_crop_im_bm(im, fm, bm):
-    # different tight crop
+    img_size = (256,256)
+    ######## preprocessing
+    wc = fm
+    msk=((wc[:,:,0]!=0)&(wc[:,:,1]!=0)&(wc[:,:,2]!=0)).astype(np.uint8)*255
+    #normalize label
+    xmx, xmn, ymx, ymn,zmx, zmn= 1.0858383, -1.0862498, 0.8847823, -0.8838696, 0.31327668, -0.30930856 
+    wc[:,:,0]= (wc[:,:,0]-zmn)/(zmx-zmn)
+    wc[:,:,1]= (wc[:,:,1]-ymn)/(ymx-ymn)
+    wc[:,:,2]= (wc[:,:,2]-xmn)/(xmx-xmn)
+    wc=cv2.bitwise_and(wc,wc,mask=msk)
+    
+    wc = cv2.resize(wc, img_size) 
+    wc = wc.astype(float) / 255.0
+    #wc = wc.transpose(2, 0, 1) # NHWC -> NCHW
+    #wc = np.array(wc, dtype=np.float64)
+    #wc = torch.from_numpy(wc).float()
+
+    #im = im / 255
+
+    
     msk=((fm[:,:,0]!=0)&(fm[:,:,1]!=0)&(fm[:,:,2]!=0)).astype(np.uint8)
     size=msk.shape
     [y, x] = (msk).nonzero()
+ 
     minx = min(x)
     maxx = max(x)
     miny = min(y)
@@ -369,7 +389,7 @@ def tight_crop_im_bm(im, fm, bm):
     ic(l)
     ic(r)
 
-    img_size = (256,256)
+    
     bm = np.array(bm, dtype=np.float64)
     #bm = bm.astype(float)
     #normalize label [-1,1]
@@ -378,6 +398,7 @@ def tight_crop_im_bm(im, fm, bm):
     bm[:,:,0]=bm[:,:,0]-l
     ic(bm.shape)
     bm=bm/np.array([256.0-l-r, 256.0-t-b])
+    #bm=bm/np.array([1.0-l-r, 1.0-t-b])
     #bm=(bm-0.5)*2
 
     #bm0=cv2.resize(bm[:,:,0],(img_size[0],img_size[1]))
@@ -396,3 +417,60 @@ def tight_crop_im_bm(im, fm, bm):
     #img = img / 255
 
     return img, fm, bm
+
+def tight_crop_no_fm(im, bm):
+    #im = im*255
+    img_size = (256,256)
+    ######## preprocessing
+    
+    msk=((im[:,:,0]!=0)&(im[:,:,1]!=0)&(im[:,:,2]!=0)).astype(np.uint8)
+    size=msk.shape
+    [y, x] = (msk).nonzero()
+ 
+    minx = min(x)
+    maxx = max(x)
+    miny = min(y)
+    maxy = max(y)
+    im = im[miny : maxy + 1, minx : maxx + 1, :]
+
+
+
+    t=miny
+    b=size[0]-maxy
+    l=minx
+    r=size[1]-maxx
+
+    ic(t)
+    ic(b)
+    ic(l)
+    ic(r)
+
+
+    
+    bm = np.array(bm, dtype=np.float64)
+    #bm = bm.astype(float)
+    #normalize label [-1,1]
+    bm = bm*255
+    bm[:,:,1]=bm[:,:,1]-t
+    bm[:,:,0]=bm[:,:,0]-l
+    ic(bm.shape)
+    bm=bm/np.array([256.0-l-r, 256.0-t-b])
+    #bm=bm/np.array([1.0-l-r, 1.0-t-b])
+    #bm=(bm-0.5)*2
+
+    #bm0=cv2.resize(bm[:,:,0],(img_size[0],img_size[1]))
+    #bm1=cv2.resize(bm[:,:,1],(img_size[0],img_size[1]))
+    
+    #img=np.concatenate([alb,wc],axis=0)
+    #bm=np.stack([bm0,bm1],axis=-1)
+
+    #img = torch.from_numpy(img).float()
+    bm = torch.from_numpy(bm).float()
+
+    img = cv2.resize(im, (256,256), interpolation=cv2.INTER_NEAREST)
+
+    #img = img.transpose(2, 0, 1)
+    img = torch.from_numpy(img).float()
+    #img = img / 255
+
+    return img, bm
