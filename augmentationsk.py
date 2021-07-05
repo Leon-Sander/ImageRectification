@@ -33,16 +33,16 @@ def tight_crop(im, fm):
     # cy1 = int(random.randint(0, 3) / 7.0 * py)
     # cy2 = int(random.randint(0, 3) / 7.0 * py + 1)
     
-    s = 20
-    im = np.pad(im, ((s, s), (s, s), (0, 0)), 'constant')
-    fm = np.pad(fm, ((s, s), (s, s), (0, 0)), 'constant')
-    cx1 = random.randint(0, s - 5)
-    cx2 = random.randint(0, s - 5) + 1
-    cy1 = random.randint(0, s - 5)
-    cy2 = random.randint(0, s - 5) + 1
+    #s = 20
+    #im = np.pad(im, ((s, s), (s, s), (0, 0)), 'constant')
+    #fm = np.pad(fm, ((s, s), (s, s), (0, 0)), 'constant')
+    #cx1 = random.randint(0, s - 5)
+    #cx2 = random.randint(0, s - 5) + 1
+    #cy1 = random.randint(0, s - 5)
+    #cy2 = random.randint(0, s - 5) + 1
 
-    im = im[cy1 : -cy2, cx1 : -cx2, :]
-    fm = fm[cy1 : -cy2, cx1 : -cx2, :]
+    #im = im[cy1 : -cy2, cx1 : -cx2, :]
+    #fm = fm[cy1 : -cy2, cx1 : -cx2, :]
     return im, fm
 
 

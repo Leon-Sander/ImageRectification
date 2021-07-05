@@ -232,20 +232,25 @@ def tight_crop_wc_bm( wc, bm):
     wc = wc[miny : maxy + 1, minx : maxx + 1, :]
 
     
-    s = 20
-    wc = np.pad(wc, ((s, s), (s, s), (0, 0)), 'constant')
+    #s = 20
+    #wc = np.pad(wc, ((s, s), (s, s), (0, 0)), 'constant')
 
-    cx1 = random.randint(0, s - 5)
-    cx2 = random.randint(0, s - 5) + 1
-    cy1 = random.randint(0, s - 5)
-    cy2 = random.randint(0, s - 5) + 1
+    #cx1 = random.randint(0, s - 5)
+    #cx2 = random.randint(0, s - 5) + 1
+    #cy1 = random.randint(0, s - 5)
+    #cy2 = random.randint(0, s - 5) + 1
 
-    wc = wc[cy1 : -cy2, cx1 : -cx2, :]
+    #wc = wc[cy1 : -cy2, cx1 : -cx2, :]
 
-    t=miny-s+cy1
-    b=size[0]-maxy-s+cy2
-    l=minx-s+cx1
-    r=size[1]-maxx-s+cx2
+    #t=miny-s+cy1
+    #b=size[0]-maxy-s+cy2
+    #l=minx-s+cx1
+    #r=size[1]-maxx-s+cx2
+
+    t=miny
+    b=size[0]-maxy
+    l=minx
+    r=size[1]-maxx
 
     img_size = (256,256)
 
@@ -296,7 +301,7 @@ def unwarp_image_crop(img, bm):
     bm = bm.transpose(1, 2).transpose(2, 3)
 
     bm = 2 * bm - 1 # adapt value range for grid_sample
-    #bm = bm.transpose(1, 2) # rotate image by 90 degrees (NOTE: this transformation might be deleted in future BM versions)
+    bm = bm.transpose(1, 2) # rotate image by 90 degrees (NOTE: this transformation might be deleted in future BM versions)
     
     img = img.float()
     res = F.grid_sample(input=img, grid=bm, align_corners=True) # align_corners=True -> old behaviour
@@ -306,3 +311,88 @@ def unwarp_image_crop(img, bm):
     res = res.detach().cpu()
     res = res.numpy()[0]
     return res
+
+def tight_crop_im_wc(im, fm):
+    # different tight crop
+    msk=((fm[:,:,0]!=0)&(fm[:,:,1]!=0)&(fm[:,:,2]!=0)).astype(np.uint8)
+    [y, x] = (msk).nonzero()
+    minx = min(x)
+    maxx = max(x)
+    miny = min(y)
+    maxy = max(y)
+    im = im[miny : maxy + 1, minx : maxx + 1, :]
+    fm = fm[miny : maxy + 1, minx : maxx + 1, :]
+    
+    # px = int((maxx - minx) * 0.07)
+    # py = int((maxy - miny) * 0.07)
+    
+    # im = np.pad(im, ((py, py + 1), (px, px + 1), (0, 0)), 'constant')
+    # fm = np.pad(fm, ((py, py + 1), (px, px + 1), (0, 0)), 'constant')
+    # # crop
+    # cx1 = int(random.randint(0, 3) / 7.0 * px)
+    # cx2 = int(random.randint(0, 3) / 7.0 * px + 1)
+    # cy1 = int(random.randint(0, 3) / 7.0 * py)
+    # cy2 = int(random.randint(0, 3) / 7.0 * py + 1)
+    
+    #s = 20
+    #im = np.pad(im, ((s, s), (s, s), (0, 0)), 'constant')
+    #fm = np.pad(fm, ((s, s), (s, s), (0, 0)), 'constant')
+    #cx1 = random.randint(0, s - 5)
+    #cx2 = random.randint(0, s - 5) + 1
+    #cy1 = random.randint(0, s - 5)
+    #cy2 = random.randint(0, s - 5) + 1
+
+    #im = im[cy1 : -cy2, cx1 : -cx2, :]
+    #fm = fm[cy1 : -cy2, cx1 : -cx2, :]
+    return im, fm
+
+def tight_crop_im_bm(im, fm, bm):
+    # different tight crop
+    msk=((fm[:,:,0]!=0)&(fm[:,:,1]!=0)&(fm[:,:,2]!=0)).astype(np.uint8)
+    size=msk.shape
+    [y, x] = (msk).nonzero()
+    minx = min(x)
+    maxx = max(x)
+    miny = min(y)
+    maxy = max(y)
+    im = im[miny : maxy + 1, minx : maxx + 1, :]
+    fm = fm[miny : maxy + 1, minx : maxx + 1, :]
+
+
+    t=miny
+    b=size[0]-maxy
+    l=minx
+    r=size[1]-maxx
+
+    ic(t)
+    ic(b)
+    ic(l)
+    ic(r)
+
+    img_size = (256,256)
+    bm = np.array(bm, dtype=np.float64)
+    #bm = bm.astype(float)
+    #normalize label [-1,1]
+    bm = bm*255
+    bm[:,:,1]=bm[:,:,1]-t
+    bm[:,:,0]=bm[:,:,0]-l
+    ic(bm.shape)
+    bm=bm/np.array([256.0-l-r, 256.0-t-b])
+    #bm=(bm-0.5)*2
+
+    #bm0=cv2.resize(bm[:,:,0],(img_size[0],img_size[1]))
+    #bm1=cv2.resize(bm[:,:,1],(img_size[0],img_size[1]))
+    
+    #img=np.concatenate([alb,wc],axis=0)
+    #bm=np.stack([bm0,bm1],axis=-1)
+
+    #img = torch.from_numpy(img).float()
+    bm = torch.from_numpy(bm).float()
+
+    img = cv2.resize(im.numpy(), (256,256), interpolation=cv2.INTER_NEAREST)
+
+    #img = img.transpose(2, 0, 1)
+    img = torch.from_numpy(img).float()
+    #img = img / 255
+
+    return img, fm, bm
