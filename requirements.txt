@@ -1,4 +1,4 @@
 pytorch-lightning
-openvc-python
+opencv-python
 matplotlib
 icecream
