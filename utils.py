@@ -123,6 +123,26 @@ def load_wc(path):
 
     return lbl
 
+def load_uv(path):
+    lbl = np.load(path + '/warped_UV.npz')['warped_UV']
+    lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
+    lbl = np.array(lbl, dtype=np.float64)
+    lbl = torch.from_numpy(lbl).float()
+    return lbl
+
+def load_anlges(path):
+    lbl = np.load(path + '/warped_angle.npz')['warped_angle']
+    lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
+    lbl = np.array(lbl, dtype=np.float64)
+    lbl = torch.from_numpy(lbl).float()
+    return lbl
+
+def load_txt_msk(path):
+    lbl = np.load(path + '/warped_text_mask.npz')['warped_text_mask']
+    lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
+    lbl = np.array(lbl, dtype=np.float64)
+    lbl = torch.from_numpy(lbl).float()
+    return lbl
 
 def load_bm(path):
     bm = np.load(path + '/warped_BM.npz')['warped_BM']
