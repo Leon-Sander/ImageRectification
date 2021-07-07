@@ -221,73 +221,6 @@ def unwarp_image_logging(img, bm):
     res = res.detach().cpu().numpy()[0]
     return res
 
-def tight_crop_wc_bm( wc, bm):
-    msk=((wc[:,:,0]!=0)&(wc[:,:,1]!=0)&(wc[:,:,2]!=0)).astype(np.uint8)
-    size=msk.shape
-    [y, x] = (msk).nonzero()
-    minx = min(x)
-    maxx = max(x)
-    miny = min(y)
-    maxy = max(y)
-    wc = wc[miny : maxy + 1, minx : maxx + 1, :]
-
-    
-    #s = 20
-    #wc = np.pad(wc, ((s, s), (s, s), (0, 0)), 'constant')
-
-    #cx1 = random.randint(0, s - 5)
-    #cx2 = random.randint(0, s - 5) + 1
-    #cy1 = random.randint(0, s - 5)
-    #cy2 = random.randint(0, s - 5) + 1
-
-    #wc = wc[cy1 : -cy2, cx1 : -cx2, :]
-
-    #t=miny-s+cy1
-    #b=size[0]-maxy-s+cy2
-    #l=minx-s+cx1
-    #r=size[1]-maxx-s+cx2
-
-    t=miny
-    b=size[0]-maxy
-    l=minx
-    r=size[1]-maxx
-
-    img_size = (256,256)
-
-
-    msk=((wc[:,:,0]!=0)&(wc[:,:,1]!=0)&(wc[:,:,2]!=0)).astype(np.uint8)*255
-    #normalize label
-    xmx, xmn, ymx, ymn,zmx, zmn= 1.0858383, -1.0862498, 0.8847823, -0.8838696, 0.31327668, -0.30930856 
-    wc[:,:,0]= (wc[:,:,0]-zmn)/(zmx-zmn)
-    wc[:,:,1]= (wc[:,:,1]-ymn)/(ymx-ymn)
-    wc[:,:,2]= (wc[:,:,2]-xmn)/(xmx-xmn)
-    wc=cv2.bitwise_and(wc,wc,mask=msk)
-    
-    wc = cv2.resize(wc, img_size) 
-    wc = wc.astype(float) / 255.0
-    wc = wc.transpose(2, 0, 1) # NHWC -> NCHW
-    wc = np.array(wc, dtype=np.float64)
-    wc = torch.from_numpy(wc).float()
-
-    bm = bm.astype(float)
-    #normalize label [-1,1]
-    bm[:,:,1]=bm[:,:,1]-t
-    bm[:,:,0]=bm[:,:,0]-l
-    bm=bm/np.array([256.0-l-r, 256.0-t-b])
-    bm=(bm-0.5)*2
-
-    bm0=cv2.resize(bm[:,:,0],(img_size[0],img_size[1]))
-    bm1=cv2.resize(bm[:,:,1],(img_size[0],img_size[1]))
-    
-    #img=np.concatenate([alb,wc],axis=0)
-    bm=np.stack([bm0,bm1],axis=-1)
-
-    #img = torch.from_numpy(img).float()
-    bm = torch.from_numpy(bm).float()
-
-
-
-    return wc, bm
 
 
 def unwarp_image_crop(img, bm):
@@ -312,168 +245,6 @@ def unwarp_image_crop(img, bm):
     res = res.numpy()[0]
     return res
 
-def tight_crop_im_wc(im, fm):
-    # different tight crop
-    msk=((fm[:,:,0]!=0)&(fm[:,:,1]!=0)&(fm[:,:,2]!=0)).astype(np.uint8)
-    [y, x] = (msk).nonzero()
-    minx = min(x)
-    maxx = max(x)
-    miny = min(y)
-    maxy = max(y)
-    im = im[miny : maxy + 1, minx : maxx + 1, :]
-    fm = fm[miny : maxy + 1, minx : maxx + 1, :]
-    
-    # px = int((maxx - minx) * 0.07)
-    # py = int((maxy - miny) * 0.07)
-    
-    # im = np.pad(im, ((py, py + 1), (px, px + 1), (0, 0)), 'constant')
-    # fm = np.pad(fm, ((py, py + 1), (px, px + 1), (0, 0)), 'constant')
-    # # crop
-    # cx1 = int(random.randint(0, 3) / 7.0 * px)
-    # cx2 = int(random.randint(0, 3) / 7.0 * px + 1)
-    # cy1 = int(random.randint(0, 3) / 7.0 * py)
-    # cy2 = int(random.randint(0, 3) / 7.0 * py + 1)
-    
-    #s = 20
-    #im = np.pad(im, ((s, s), (s, s), (0, 0)), 'constant')
-    #fm = np.pad(fm, ((s, s), (s, s), (0, 0)), 'constant')
-    #cx1 = random.randint(0, s - 5)
-    #cx2 = random.randint(0, s - 5) + 1
-    #cy1 = random.randint(0, s - 5)
-    #cy2 = random.randint(0, s - 5) + 1
-
-    #im = im[cy1 : -cy2, cx1 : -cx2, :]
-    #fm = fm[cy1 : -cy2, cx1 : -cx2, :]
-    return im, fm
-
-def tight_crop_im_bm(im, fm, bm):
-    img_size = (256,256)
-    ######## preprocessing
-    wc = fm
-    msk=((wc[:,:,0]!=0)&(wc[:,:,1]!=0)&(wc[:,:,2]!=0)).astype(np.uint8)*255
-    #normalize label
-    xmx, xmn, ymx, ymn,zmx, zmn= 1.0858383, -1.0862498, 0.8847823, -0.8838696, 0.31327668, -0.30930856 
-    wc[:,:,0]= (wc[:,:,0]-zmn)/(zmx-zmn)
-    wc[:,:,1]= (wc[:,:,1]-ymn)/(ymx-ymn)
-    wc[:,:,2]= (wc[:,:,2]-xmn)/(xmx-xmn)
-    wc=cv2.bitwise_and(wc,wc,mask=msk)
-    
-    wc = cv2.resize(wc, img_size) 
-    wc = wc.astype(float) / 255.0
-    #wc = wc.transpose(2, 0, 1) # NHWC -> NCHW
-    #wc = np.array(wc, dtype=np.float64)
-    #wc = torch.from_numpy(wc).float()
-
-    #im = im / 255
-
-    
-    msk=((fm[:,:,0]!=0)&(fm[:,:,1]!=0)&(fm[:,:,2]!=0)).astype(np.uint8)
-    size=msk.shape
-    [y, x] = (msk).nonzero()
- 
-    minx = min(x)
-    maxx = max(x)
-    miny = min(y)
-    maxy = max(y)
-    im = im[miny : maxy + 1, minx : maxx + 1, :]
-    fm = fm[miny : maxy + 1, minx : maxx + 1, :]
-
-
-    t=miny
-    b=size[0]-maxy
-    l=minx
-    r=size[1]-maxx
-
-    ic(t)
-    ic(b)
-    ic(l)
-    ic(r)
-
-    
-    bm = np.array(bm, dtype=np.float64)
-    #bm = bm.astype(float)
-    #normalize label [-1,1]
-    bm = bm*255
-    bm[:,:,1]=bm[:,:,1]-t
-    bm[:,:,0]=bm[:,:,0]-l
-    ic(bm.shape)
-    bm=bm/np.array([256.0-l-r, 256.0-t-b])
-    #bm=bm/np.array([1.0-l-r, 1.0-t-b])
-    #bm=(bm-0.5)*2
-
-    #bm0=cv2.resize(bm[:,:,0],(img_size[0],img_size[1]))
-    #bm1=cv2.resize(bm[:,:,1],(img_size[0],img_size[1]))
-    
-    #img=np.concatenate([alb,wc],axis=0)
-    #bm=np.stack([bm0,bm1],axis=-1)
-
-    #img = torch.from_numpy(img).float()
-    bm = torch.from_numpy(bm).float()
-
-    img = cv2.resize(im.numpy(), (256,256), interpolation=cv2.INTER_NEAREST)
-
-    #img = img.transpose(2, 0, 1)
-    img = torch.from_numpy(img).float()
-    #img = img / 255
-
-    return img, fm, bm
-
-def tight_crop_no_fm(im, bm):
-    #im = im*255
-    img_size = (256,256)
-    ######## preprocessing
-    
-    msk=((im[:,:,0]!=0)&(im[:,:,1]!=0)&(im[:,:,2]!=0)).astype(np.uint8)
-    size=msk.shape
-    [y, x] = (msk).nonzero()
- 
-    minx = min(x)
-    maxx = max(x)
-    miny = min(y)
-    maxy = max(y)
-    im = im[miny : maxy + 1, minx : maxx + 1, :]
-
-
-
-    t=miny
-    b=size[0]-maxy
-    l=minx
-    r=size[1]-maxx
-
-    ic(t)
-    ic(b)
-    ic(l)
-    ic(r)
-
-
-    
-    bm = np.array(bm, dtype=np.float64)
-    #bm = bm.astype(float)
-    #normalize label [-1,1]
-    bm = bm*255
-    bm[:,:,1]=bm[:,:,1]-t
-    bm[:,:,0]=bm[:,:,0]-l
-    ic(bm.shape)
-    bm=bm/np.array([256.0-l-r, 256.0-t-b])
-    #bm=bm/np.array([1.0-l-r, 1.0-t-b])
-    #bm=(bm-0.5)*2
-
-    #bm0=cv2.resize(bm[:,:,0],(img_size[0],img_size[1]))
-    #bm1=cv2.resize(bm[:,:,1],(img_size[0],img_size[1]))
-    
-    #img=np.concatenate([alb,wc],axis=0)
-    #bm=np.stack([bm0,bm1],axis=-1)
-
-    #img = torch.from_numpy(img).float()
-    bm = torch.from_numpy(bm).float()
-
-    img = cv2.resize(im, (256,256), interpolation=cv2.INTER_NEAREST)
-
-    #img = img.transpose(2, 0, 1)
-    img = torch.from_numpy(img).float()
-    #img = img / 255
-
-    return img, bm
 
 def load_warped_document_cropped(path):
     #### img gets loaded with shape (n,c,h,w)
@@ -533,3 +304,151 @@ def plt_result_bm_cropped(path, bm_model):
     ax3.set_title('Unwarped image gt')
     
     plt.axis('off')
+
+def load_wc_cropped(path):
+    fm = np.load(path + '/warped_WC.npz')['warped_WC']
+
+    msk=((fm[:,:,0]!=0)&(fm[:,:,1]!=0)&(fm[:,:,2]!=0)).astype(np.uint8)
+    size=msk.shape
+    [y, x] = (msk).nonzero()
+
+    minx = min(x)
+    maxx = max(x)
+    miny = min(y)
+    maxy = max(y)
+    
+    wc = fm[miny : maxy + 1, minx : maxx + 1, :]
+    wc = cv2.resize(wc, (256,256), interpolation=cv2.INTER_NEAREST)
+
+    lbl = wc
+    msk=((lbl[:,:,0]!=0)&(lbl[:,:,1]!=0)&(lbl[:,:,2]!=0)).astype(np.uint8)*255
+    #xmx, xmn, ymx, ymn,zmx, zmn= 1.2539363, -1.2442188, 1.2396319, -1.2289206, 0.6436657, -0.67492497   # calculate from all the wcs
+    xmx, xmn, ymx, ymn,zmx, zmn= 1.0858383, -1.0862498, 0.8847823, -0.8838696, 0.31327668, -0.30930856 # preview -> neu ausrechnen?
+    lbl[:,:,0]= (lbl[:,:,0]-zmn)/(zmx-zmn)
+    lbl[:,:,1]= (lbl[:,:,1]-ymn)/(ymx-ymn)
+    lbl[:,:,2]= (lbl[:,:,2]-xmn)/(xmx-xmn)
+    lbl=cv2.bitwise_and(lbl,lbl,mask=msk)
+    lbl = cv2.resize(lbl, (256,256), interpolation=cv2.INTER_NEAREST)
+    lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
+    lbl = np.array(lbl, dtype=np.float64)
+    lbl = torch.from_numpy(lbl).float()
+
+
+    return lbl
+
+
+def plt_bm_gt_cropped(path, bm_model):
+    #img = load_warped_document(path)
+    wc, labels = crop_all(path)
+
+    img_cropped = labels['img'].unsqueeze(0)
+
+
+
+    bm_pred = bm_model(wc.unsqueeze(0))
+    unwarped_image_pred = unwarp_image(img_cropped,bm_pred)
+    unwarped_image_gt = unwarp_image(img_cropped,labels['warped_bm'].unsqueeze(0))
+
+    unwarped_image_pred_ssmi = unwarp_image_ssmi(img_cropped,bm_pred)
+    unwarped_image_gt_ssmi = unwarp_image_ssmi(img_cropped,labels['warped_bm'].unsqueeze(0))
+
+    ssim_metric = ssim(unwarped_image_pred_ssmi, unwarped_image_gt_ssmi)
+
+
+    fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(15,5))
+    ax1.imshow(img_cropped[0].transpose(0,1).transpose(1,2))
+    ax1.set_title('Warped Image')
+
+    ax2.imshow(unwarped_image_pred)
+    ax2.set_title('Prediction, ssmi to gt: ' + str(ssim_metric))
+
+    ax3.imshow(unwarped_image_gt)
+    ax3.set_title('Unwarped image gt')
+    
+    plt.axis('off')
+
+def crop_all(data_path):
+    input = np.load(data_path + '/warped_WC.npz')['warped_WC']
+    
+    labels = {}
+    labels['warped_bm'] = np.load(data_path + '/warped_BM.npz')['warped_BM']
+    labels['warped_uv'] = np.load(data_path + '/warped_UV.npz')['warped_UV']
+    labels['warped_angle'] = np.load(data_path + '/warped_angle.npz')['warped_angle']
+    labels['warped_text_mask'] = np.load(data_path + '/warped_text_mask.npz')['warped_text_mask']
+    labels['img'] = cv2.imread(data_path + '/warped_document.png')
+
+    fm = input
+    msk=((fm[:,:,0]!=0)&(fm[:,:,1]!=0)&(fm[:,:,2]!=0)).astype(np.uint8)
+    size=msk.shape
+    [y, x] = (msk).nonzero()
+
+    minx = min(x)
+    maxx = max(x)
+    miny = min(y)
+    maxy = max(y)
+    
+    fm = fm[miny : maxy + 1, minx : maxx + 1, :]
+    fm = cv2.resize(fm, (256,256), interpolation=cv2.INTER_NEAREST)
+
+    for label in labels:
+        if label != 'warped_bm':
+            im = labels[label]
+            im = np.array(im, dtype=np.float64)
+            #ic(label, im.shape)
+            im = im[miny : maxy + 1, minx : maxx + 1, :]
+            im = cv2.resize(im, (256,256), interpolation=cv2.INTER_NEAREST)
+            if label == 'warped_text_mask':
+                im = np.expand_dims(im, axis=2)
+            #ic(label, im.shape)
+            labels[label] = im
+        else:
+
+            t=miny
+            b=size[0]-maxy
+            l=minx
+            r=size[1]-maxx
+
+            bm = labels[label]
+            bm = np.array(bm, dtype=np.float64)
+
+            bm = bm*255
+            bm[:,:,1]=bm[:,:,1]-t
+            bm[:,:,0]=bm[:,:,0]-l
+            bm=bm/np.array([float(256)-l-r, float(256)-t-b])
+            labels[label] = bm
+
+            #lbl = input
+
+    lbl = fm
+    msk=((lbl[:,:,0]!=0)&(lbl[:,:,1]!=0)&(lbl[:,:,2]!=0)).astype(np.uint8)*255
+    #xmx, xmn, ymx, ymn,zmx, zmn= 1.2539363, -1.2442188, 1.2396319, -1.2289206, 0.6436657, -0.67492497   # calculate from all the wcs
+    xmx, xmn, ymx, ymn,zmx, zmn= 1.0858383, -1.0862498, 0.8847823, -0.8838696, 0.31327668, -0.30930856 # preview
+    lbl[:,:,0]= (lbl[:,:,0]-zmn)/(zmx-zmn)
+    lbl[:,:,1]= (lbl[:,:,1]-ymn)/(ymx-ymn)
+    lbl[:,:,2]= (lbl[:,:,2]-xmn)/(xmx-xmn)
+    lbl=cv2.bitwise_and(lbl,lbl,mask=msk)
+    lbl = cv2.resize(lbl, (256,256), interpolation=cv2.INTER_NEAREST)
+    lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
+    lbl = np.array(lbl, dtype=np.float64)
+    lbl = torch.from_numpy(lbl).float()
+    input = lbl
+    #ic(input.shape)
+    for label in labels:
+        #ic(label, lbl.shape)
+        if label == 'img':
+            img = labels[label]
+            img = img.transpose(2, 0, 1)
+            img = torch.from_numpy(img).float()
+            
+            img = img / 255
+            labels[label] = img
+        else:
+
+            lbl = labels[label]
+            
+            lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
+            lbl = np.array(lbl, dtype=np.float64)
+            lbl = torch.from_numpy(lbl).float()
+            labels[label] = lbl
+
+    return input, labels

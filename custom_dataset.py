@@ -190,6 +190,7 @@ class Dataset_backward_mapping(Dataset):
         maxy = max(y)
         
         fm = fm[miny : maxy + 1, minx : maxx + 1, :]
+        fm = cv2.resize(fm, self.img_size, interpolation=cv2.INTER_NEAREST)
 
         for label in labels:
             if label != 'warped_bm':
