@@ -185,7 +185,7 @@ def unwarp_image(img, bm):
     bm = F.interpolate(bm, size=(h, w), mode='bilinear', align_corners=True) # align_corners=True -> old behaviour
     bm = bm.transpose(1, 2).transpose(2, 3)
 
-    bm = 2 * bm - 1 # adapt value range for grid_sample
+    #bm = 2 * bm - 1 # adapt value range for grid_sample
     bm = bm.transpose(1, 2) # rotate image by 90 degrees (NOTE: this transformation might be deleted in future BM versions)
     
     img = img.float()
@@ -207,7 +207,7 @@ def unwarp_image_ssmi(img, bm):
     bm = F.interpolate(bm, size=(h, w), mode='bilinear', align_corners=True) # align_corners=True -> old behaviour
     bm = bm.transpose(1, 2).transpose(2, 3)
 
-    bm = 2 * bm - 1 # adapt value range for grid_sample
+    #bm = 2 * bm - 1 # adapt value range for grid_sample
     bm = bm.transpose(1, 2) # rotate image by 90 degrees (NOTE: this transformation might be deleted in future BM versions)
     
     img = img.float()
@@ -231,7 +231,7 @@ def unwarp_image_logging(img, bm):
     bm = F.interpolate(bm, size=(h, w), mode='bilinear', align_corners=True) # align_corners=True -> old behaviour
     bm = bm.transpose(1, 2).transpose(2, 3)
 
-    bm = 2 * bm - 1 # adapt value range for grid_sample
+    #bm = 2 * bm - 1 # adapt value range for grid_sample
     bm = bm.transpose(1, 2) # rotate image by 90 degrees (NOTE: this transformation might be deleted in future BM versions)
     
     img = img.float()
@@ -253,7 +253,7 @@ def unwarp_image_crop(img, bm):
     bm = F.interpolate(bm, size=(h, w), mode='bilinear', align_corners=True) # align_corners=True -> old behaviour
     bm = bm.transpose(1, 2).transpose(2, 3)
 
-    bm = 2 * bm - 1 # adapt value range for grid_sample
+    #bm = 2 * bm - 1 # adapt value range for grid_sample
     bm = bm.transpose(1, 2) # rotate image by 90 degrees (NOTE: this transformation might be deleted in future BM versions)
     
     img = img.float()
@@ -363,8 +363,7 @@ def plt_bm_gt_cropped(path, bm_model):
 
     img_cropped = labels['img'].unsqueeze(0)
 
-
-
+    
     bm_pred = bm_model(wc.unsqueeze(0))
     unwarped_image_pred = unwarp_image(img_cropped,bm_pred)
     unwarped_image_gt = unwarp_image(img_cropped,labels['warped_bm'].unsqueeze(0))
@@ -435,6 +434,7 @@ def crop_all(data_path):
             bm[:,:,1]=bm[:,:,1]-t
             bm[:,:,0]=bm[:,:,0]-l
             bm=bm/np.array([float(256)-l-r, float(256)-t-b])
+            bm=(bm-0.5)*2
             labels[label] = bm
 
             #lbl = input

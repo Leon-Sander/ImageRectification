@@ -71,7 +71,7 @@ class CustomImageDataset_wc(Dataset):
         return img
     
     @staticmethod
-    def calculate_min_and_max(data_dir):
+    def calculate_min_and_max(data_dir, img_size):
         
         p = Path('./')
         folder = list(p.glob(data_dir + '*/'))
@@ -82,6 +82,21 @@ class CustomImageDataset_wc(Dataset):
         for item in folder:
             path_wc = str(item) + '/warped_WC.npz'
             wc_gt = np.load(path_wc)['warped_WC']
+
+            fm = wc_gt
+            msk=((fm[:,:,0]!=0)&(fm[:,:,1]!=0)&(fm[:,:,2]!=0)).astype(np.uint8)
+            size=msk.shape
+            [y, x] = (msk).nonzero()
+        
+            minx = min(x)
+            maxx = max(x)
+            miny = min(y)
+            maxy = max(y)
+            
+            fm = fm[miny : maxy + 1, minx : maxx + 1, :]
+            fm = cv2.resize(fm, img_size, interpolation=cv2.INTER_NEAREST)
+            wc_gt = fm
+
             wc_gt = wc_gt.transpose(2,0,1)
 
             local_zmx = np.amax(wc_gt[0])
@@ -217,6 +232,7 @@ class Dataset_backward_mapping(Dataset):
                 bm[:,:,1]=bm[:,:,1]-t
                 bm[:,:,0]=bm[:,:,0]-l
                 bm=bm/np.array([float(self.img_size[0])-l-r, float(self.img_size[1])-t-b])
+                bm=(bm-0.5)*2
                 labels[label] = bm
 
         return fm, labels
