@@ -23,18 +23,20 @@
             "img_size" :256, 
             "in_channels" : 3, 
             "out_channels" : 2, 
-            "filters" : 64,
+            "filters" : 32,
             "fc_units" : 100,
             "lr" : 1e-3, 
             "weight_decay" : 5e-4,
             "data_path" : "Dataset Preview/Inv3D preview complete V2/data/",
             "batch_size_train" : 2,
+            "batch_size_val" : 1,
+            "batch_size_test" : 1,
             "gpus" : 1,
-            "max_epochs" : 400,
-            "save_name" : "filter64_test",
+            "max_epochs" : 25,
+            "save_name" : "test",
             "use_pretrained" : 0,
-            "use_pretrained_model_name" : "filter64_test",
-            "log_every_n_steps" : 5
+            "use_pretrained_model_name" : "test",
+            "log_every_n_steps" : 50
 
         },
 
@@ -57,7 +59,7 @@
             "save_name" : "crease_test",
             "load_3d" : "wc_test2",
             "load_bm" : "bm_test",
-            "log_every_n_steps" : 5
+            "log_every_n_steps" : 9
 
         }
 

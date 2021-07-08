@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+#os.environ["CUDA_VISIBLE_DEVICES"]="2"
 from models import unetnc, backwardmapper, full_model
 from custom_dataset import CustomImageDataset_wc, Dataset_backward_mapping, Dataset_full_model
 from torch.utils.data import DataLoader
@@ -59,21 +59,23 @@ def main(args):
 
             model_bm.load_state_dict(torch.load('models/pretrained/' + config['train_backwardmapper']['use_pretrained_model_name'] + '.pkl'))
         train_dataset_bm = Dataset_backward_mapping(data_dir=DATA_PATH+'train/')
-        #dataset_val = CustomImageDataset_wc(data_dir=DATA_PATH+'val/', transform=True)
-        #dataset_test = CustomImageDataset_wc(data_dir=DATA_PATH+'test/', transform=True)
+        dataset_val = Dataset_backward_mapping(data_dir=DATA_PATH+'val/')
+        dataset_test = Dataset_backward_mapping(data_dir=DATA_PATH+'test/')
         
         
-        #val_loader = DataLoader(dataset_val, batch_size= config['train_wc']['batch_size_train'], num_workers=12)
-        #test_loader = DataLoader(dataset_test, batch_size= config['train_wc']['batch_size_train'], num_workers=12)
+        val_loader = DataLoader(dataset_val, batch_size= config['train_backwardmapper']['batch_size_val'], num_workers=12)
+        test_loader = DataLoader(dataset_test, batch_size= config['train_backwardmapper']['batch_size_test'], num_workers=12)
         train_loader = DataLoader(train_dataset_bm, batch_size= config['train_backwardmapper']['batch_size_train'], num_workers=12)
         
 
         #logger = TensorBoardLogger("tb_logs", name=config['train_backwardmapper']['save_name'])
         trainer = pl.Trainer(gpus=config['train_backwardmapper']['gpus'], max_epochs = config['train_backwardmapper']['max_epochs'],
-                            log_every_n_steps=config['train_backwardmapper']['log_every_n_steps'])
-        trainer.fit(model_bm, train_loader)
+                            log_every_n_steps=config['train_backwardmapper']['log_every_n_steps'],
+                            check_val_every_n_epoch = 5)
+
+        trainer.fit(model_bm, train_loader, val_loader)
         torch.save(model_bm.state_dict(), 'models/pretrained/' + config['train_backwardmapper']['save_name'] + '.pkl')
-        
+        trainer.test(model_bm, test_loader)
 
     elif args['model'] == 'train_full':
         DATA_PATH = config['train_full']['data_path']

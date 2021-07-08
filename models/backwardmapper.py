@@ -249,6 +249,7 @@ class Backwardmapper(pl.LightningModule):
         self.weight_decay = weight_decay
         self.L1_loss = nn.L1Loss(reduction='none')
         #self.tensorboard = self.logger.experiment
+        self.img_size = img_size if isinstance(img_size, tuple) else (img_size, img_size)
 
         self.encoder=waspDenseEncoder256(nc=self.nc+2,ndf=self.nf,ndim=self.ndim)
         self.decoder=waspDenseDecoder256(nz=self.ndim,nc=self.oc,ngf=self.nf)
@@ -262,17 +263,17 @@ class Backwardmapper(pl.LightningModule):
         #                               )
 
     def forward(self, inputs):
-        if inputs.shape[0] == 1:
-            self.eval()
+        #if inputs.shape[0] == 1:
+        #    self.eval()
         encoded=self.encoder(inputs)
-        self.log("shape", str(encoded.shape))
+        #self.log("shape", str(encoded.shape))
         #encoded=encoded.unsqueeze(-1).unsqueeze(-1)
         decoded=self.decoder(encoded)
         # print torch.max(decoded)
         # print torch.min(decoded)
         # für eine batch size von 1 funktioniert die batch norm nicht,
         # model.eval() muss dafür vorher ausgeführt werden. Ansonten die InstanceNorm nutzen
-        self.train()
+        #self.train()
         return decoded
 
     
@@ -314,8 +315,8 @@ class Backwardmapper(pl.LightningModule):
         
         self.log_ssim(inputs, decoded, labels, log_type)
 
-
-
+        epe= torch.sum(torch.norm((decoded - labels['warped_bm']),p=1,dim=(1))) / (self.img_size[0] * self.img_size[1])
+        self.log('epe_' + log_type,epe, on_step=False, on_epoch=True)
 
         loss = torch.mean(l1_loss + l_angle)
         #loss = torch.mean(l1_loss)
@@ -325,28 +326,31 @@ class Backwardmapper(pl.LightningModule):
         for i in range(inputs.shape[0]):
             #ic(labels['img'][i].unsqueeze(0).shape)
             ssim = utils.unwarp_and_ssim(decoded[i].unsqueeze(0), labels['warped_bm'][i].unsqueeze(0), labels['img'][i].unsqueeze(0))
-            self.log('ssim_' + log_type, ssim,on_step=True)
-            tensorboard = self.logger.experiment
+            #self.log('ssim_' + log_type, ssim,on_step=True)
+            self.log('ssim_' + log_type, ssim,on_step=False, on_epoch=True)
+            
+            #tensorboard = self.logger.experiment
 
-            unwarped_image = utils.unwarp_image_logging(labels['img'][i].unsqueeze(0),decoded[i].unsqueeze(0))
-            tesnorboard.add_image('Unwarped_image_' + str(i),unwarped_image, self.global_step)
+            #unwarped_image = utils.unwarp_image_logging(labels['img'][i].unsqueeze(0),decoded[i].unsqueeze(0))
+            #tensorboard.add_image('Unwarped_image_' + str(i),unwarped_image, self.global_step)
 
     def training_step(self, batch, batch_idx):
         inputs, labels = batch
         loss = self.loss_calculation(inputs, labels)
-        self.log("train_loss", loss,on_step=True)
+        #self.log("train_loss", loss,on_step=True)
+        self.log("train_loss", loss, on_step=False, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
         inputs, labels = batch
         loss = self.loss_calculation(inputs, labels, log_type = 'val')
-        self.log("validation_loss", loss)
+        self.log("validation_loss", loss, on_step=False, on_epoch=True)
         return loss
 
     def test_step(self, batch, batch_idx):
         inputs, labels = batch
         loss = self.loss_calculation(inputs, labels, log_type = 'test')
-        self.log("test_loss", loss)
+        self.log("test_loss", loss, on_step=False, on_epoch=True)
         return loss
 
     def configure_optimizers(self):
