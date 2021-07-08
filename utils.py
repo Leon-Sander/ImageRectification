@@ -472,3 +472,30 @@ def crop_all(data_path):
             labels[label] = lbl
 
     return input, labels
+
+def plt_bm_gt_cropped_2(bm_pred, img_cropped, bm):
+
+
+    img_cropped = img_cropped.unsqueeze(0)
+    #ic(img_cropped.shape)
+    #ic(bm_pred.shape)
+    unwarped_image_pred = unwarp_image(img_cropped,bm_pred)
+    unwarped_image_gt = unwarp_image(img_cropped,bm.unsqueeze(0))
+
+    unwarped_image_pred_ssmi = unwarp_image_ssmi(img_cropped,bm_pred)
+    unwarped_image_gt_ssmi = unwarp_image_ssmi(img_cropped,bm.unsqueeze(0))
+
+    ssim_metric = ssim(unwarped_image_pred_ssmi, unwarped_image_gt_ssmi)
+
+
+    fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(15,5))
+    ax1.imshow(img_cropped[0].transpose(0,1).transpose(1,2))
+    ax1.set_title('Warped Image')
+
+    ax2.imshow(unwarped_image_pred)
+    ax2.set_title('Prediction, ssmi to gt: ' + str(ssim_metric))
+
+    ax3.imshow(unwarped_image_gt)
+    ax3.set_title('Unwarped image gt')
+    
+    plt.axis('off')

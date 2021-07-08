@@ -123,9 +123,14 @@ class CustomImageDataset_wc(Dataset):
 
             path_curvature = str(item) + '/warped_curvature.npz'
             curv_gt = np.load(path_curvature)['warped_curvature']
-            curv_gt = curv_gt.transpose(2,0,1)
-
-            curv_local_mx =  np.amax(curv_gt[0])
+            curv_gt = curv_gt[miny : maxy + 1, minx : maxx + 1, :]
+            curv_gt = cv2.resize(curv_gt, img_size, interpolation=cv2.INTER_NEAREST)
+            
+            #curv_gt = curv_gt.unsqueeze(2)
+            #ic(curv_gt.shape)
+            #curv_gt = curv_gt.transpose(2,0,1)
+            #ic(curv_gt.shape)
+            curv_local_mx =  np.amax(curv_gt)
             if curv_local_mx > curv_mx:
                 curv_mx = curv_local_mx
 
@@ -146,7 +151,7 @@ class CustomImageDataset_wc(Dataset):
         lbl = torch.from_numpy(lbl).float()
         labels['wc_gt'] = lbl
 
-        curv_mx = 0.015919654 #curvature
+        curv_mx = 0.014783481 #curvature
 
         for label in labels:
             if label != 'wc_gt':

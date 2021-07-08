@@ -329,7 +329,7 @@ class Backwardmapper(pl.LightningModule):
             tensorboard = self.logger.experiment
 
             unwarped_image = utils.unwarp_image_logging(labels['img'][i].unsqueeze(0),decoded[i].unsqueeze(0))
-            tensorboard.add_image('Unwarped_image_' + str(i),unwarped_image, self.global_step)
+            tesnorboard.add_image('Unwarped_image_' + str(i),unwarped_image, self.global_step)
 
     def training_step(self, batch, batch_idx):
         inputs, labels = batch
