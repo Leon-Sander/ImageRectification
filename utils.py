@@ -407,7 +407,7 @@ def crop_all(data_path):
     maxy = max(y)
     
     fm = fm[miny : maxy + 1, minx : maxx + 1, :]
-    fm = cv2.resize(fm, (256,256), interpolation=cv2.INTER_NEAREST)
+    fm = cv2.resize(fm, (128,128), interpolation=cv2.INTER_NEAREST)
 
     for label in labels:
         if label != 'warped_bm':
@@ -415,7 +415,7 @@ def crop_all(data_path):
             im = np.array(im, dtype=np.float64)
             #ic(label, im.shape)
             im = im[miny : maxy + 1, minx : maxx + 1, :]
-            im = cv2.resize(im, (256,256), interpolation=cv2.INTER_NEAREST)
+            im = cv2.resize(im, (128,128), interpolation=cv2.INTER_NEAREST)
             if label == 'warped_text_mask':
                 im = np.expand_dims(im, axis=2)
             #ic(label, im.shape)
@@ -447,7 +447,7 @@ def crop_all(data_path):
     lbl[:,:,1]= (lbl[:,:,1]-ymn)/(ymx-ymn)
     lbl[:,:,2]= (lbl[:,:,2]-xmn)/(xmx-xmn)
     lbl=cv2.bitwise_and(lbl,lbl,mask=msk)
-    lbl = cv2.resize(lbl, (256,256), interpolation=cv2.INTER_NEAREST)
+    lbl = cv2.resize(lbl, (128,128), interpolation=cv2.INTER_NEAREST)
     lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
     lbl = np.array(lbl, dtype=np.float64)
     lbl = torch.from_numpy(lbl).float()

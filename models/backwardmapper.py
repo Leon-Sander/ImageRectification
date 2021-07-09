@@ -137,15 +137,10 @@ class waspDenseEncoder256(nn.Module):
         self.ndim = ndim
         #f_activation=nn.Sigmoid
         self.main = nn.Sequential(
-                # input is (nc) x 128 x 128    256x256
+                # input is (nc) x 128 x 128
                 nn.BatchNorm2d(nc),
                 nn.ReLU(True),
                 nn.Conv2d(nc, ndf, 4, stride=2, padding=1),
-                #nn.Conv2d(nc, ndf, 2, stride=2, padding=1),
-
-                # state size. (ndf) x 128 x 128
-                DenseBlockEncoder(ndf, 6),
-                DenseTransitionBlockEncoder(ndf, ndf, 2, activation=activation, args=args),
 
                 # state size. (ndf) x 64 x 64
                 DenseBlockEncoder(ndf, 6),
@@ -166,9 +161,6 @@ class waspDenseEncoder256(nn.Module):
                 # state size. (ndf*8) x 4 x 4
                 DenseBlockEncoder(ndf*8, 16),
                 DenseTransitionBlockEncoder(ndf*8, ndim, 4, activation=activation, args=args),
-
-                # n_channels_in (256), n_channels_out 256, mp, activation=nn.ReLU, args=[False]) 
-                #DenseTransitionBlockEncoder(ndf*8, ndim, 5, activation=activation, args=args), # die 4 bzw 1 genauer nachschauen was das ist
                 f_activation(*f_args),
         )
 
@@ -190,7 +182,6 @@ class waspDenseDecoder256(nn.Module):
             nn.BatchNorm2d(nz),
             activation(*args),
             nn.ConvTranspose2d(nz, ngf * 8, 4, 1, 0, bias=False),
-            # inchannels, out channels, kernel size = 4, stride = 1, padding= 0
 
             # state size. (ngf*8) x 4 x 4
             DenseBlockDecoder(ngf*8, 16),
@@ -209,10 +200,6 @@ class waspDenseDecoder256(nn.Module):
             DenseTransitionBlockDecoder(ngf*2, ngf),
 
             # state size. (ngf) x 64 x 64
-            DenseBlockDecoder(ngf, 6),
-            DenseTransitionBlockDecoder(ngf, ngf),
-
-            # hinzugefügt um auf 256 zu kommen
             DenseBlockDecoder(ngf, 6),
             DenseTransitionBlockDecoder(ngf, ngf),
 
