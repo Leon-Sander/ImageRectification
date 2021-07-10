@@ -36,7 +36,7 @@ class CustomImageDataset_wc(Dataset):
             data_path = os.path.join(self.data_dir, idx)'''
         data_path = os.path.join(self.data_dir, idx)
         #image = read_image(data_path + '/warped_document.png', mode = ImageReadMode.RGB) #->opening with torch image reader
-        image =  Image.open(data_path + '/warped_document.png') #PIL image reader
+        image =  cv2.imread(data_path + '/warped_document.png') #PIL image reader
         
         # opening all the ground truth files 
         labels = {}
@@ -47,12 +47,45 @@ class CustomImageDataset_wc(Dataset):
 
 
         if self.transform:
+            image, labels = self.tight_crop_all(image, labels)
             image = self.transform_img(image)
             labels = self.transform_labels(labels)
 
         #sample = {'image': image, 'label': labels}
         #return sample
         return image, labels
+
+    def tight_crop_all(self, img, labels):
+        fm = labels['wc_gt']  
+        msk=((fm[:,:,0]!=0)&(fm[:,:,1]!=0)&(fm[:,:,2]!=0)).astype(np.uint8)
+        size=msk.shape
+        [y, x] = (msk).nonzero()
+    
+        minx = min(x)
+        maxx = max(x)
+        miny = min(y)
+        maxy = max(y)
+        
+        fm = fm[miny : maxy + 1, minx : maxx + 1, :]
+        fm = cv2.resize(fm, self.img_size, interpolation=cv2.INTER_NEAREST)
+        img = img[miny : maxy + 1, minx : maxx + 1, :]
+        img = cv2.resize(img, self.img_size, interpolation=cv2.INTER_NEAREST)
+        labels['wc_gt'] = fm
+
+        for label in labels:
+            if label != 'wc_gt':
+                im = labels[label]
+                im = np.array(im, dtype=np.float64)
+                #ic(label, im.shape)
+                im = im[miny : maxy + 1, minx : maxx + 1, :]
+                im = cv2.resize(im, self.img_size, interpolation=cv2.INTER_NEAREST)
+                if label == 'warped_text_mask' or label == 'warped_curvature_gt':
+                    im = np.expand_dims(im, axis=2)
+                #ic(label, im.shape)
+                labels[label] = im
+
+
+        return img, labels
 
 
     def transform_img(self, img):
@@ -297,7 +330,7 @@ class Dataset_full_model(Dataset):
         data_path = os.path.join(self.data_dir, idx)
 
         
-        input =  Image.open(data_path + '/warped_document.png')
+        input =  cv2.imread(data_path + '/warped_document.png')
 
         labels = {}
         labels['warped_bm'] = np.load(data_path + '/warped_BM.npz')['warped_BM']
@@ -305,15 +338,63 @@ class Dataset_full_model(Dataset):
         labels['warped_angle'] = np.load(data_path + '/warped_angle.npz')['warped_angle']
         labels['warped_text_mask'] = np.load(data_path + '/warped_text_mask.npz')['warped_text_mask']
         labels['wc_gt'] = np.load(data_path + '/warped_WC.npz')['warped_WC'] #world coordinates ground truth
-        #labels['warped_angle_gt'] = np.load(data_path + '/warped_angle.npz')['warped_angle']
-        #labels['warped_text_mask'] = np.load(data_path + '/warped_text_mask.npz')['warped_text_mask']
         labels['warped_curvature_gt'] = np.load(data_path + '/warped_curvature.npz')['warped_curvature']
         
         if self.transform:
+            input, labels = self.tight_crop_all(input, labels)
             input, labels = self.transform_data(input, labels)
 
         return input, labels
+
+    def tight_crop_all(self, img, labels):
+        fm = labels['wc_gt']
+        msk=((fm[:,:,0]!=0)&(fm[:,:,1]!=0)&(fm[:,:,2]!=0)).astype(np.uint8)
+        size=msk.shape
+        [y, x] = (msk).nonzero()
     
+        minx = min(x)
+        maxx = max(x)
+        miny = min(y)
+        maxy = max(y)
+        
+        fm = fm[miny : maxy + 1, minx : maxx + 1, :]
+        fm = cv2.resize(fm, self.img_size, interpolation=cv2.INTER_NEAREST)
+        labels['wc_gt'] = fm
+        img = img[miny : maxy + 1, minx : maxx + 1, :]
+        img = cv2.resize(img, self.img_size, interpolation=cv2.INTER_NEAREST)
+
+        for label in labels:
+            if label != 'wc_gt':
+                if label != 'warped_bm':
+                    im = labels[label]
+                    im = np.array(im, dtype=np.float64)
+                    #ic(label, im.shape)
+                    im = im[miny : maxy + 1, minx : maxx + 1, :]
+                    im = cv2.resize(im, self.img_size, interpolation=cv2.INTER_NEAREST)
+                    if label == 'warped_text_mask' or label == 'warped_curvature_gt':
+                        im = np.expand_dims(im, axis=2)
+                    #ic(label, im.shape)
+                    labels[label] = im
+                else:
+
+                    t=miny
+                    b=size[0]-maxy
+                    l=minx
+                    r=size[1]-maxx
+
+                    bm = labels[label]
+                    bm = np.array(bm, dtype=np.float64)
+
+                    bm = bm*448
+                    bm[:,:,1]=bm[:,:,1]-t
+                    bm[:,:,0]=bm[:,:,0]-l
+                    bm=bm/np.array([float(448)-l-r, float(448)-t-b])
+                    bm=(bm-0.5)*2
+                    bm = cv2.resize(bm, self.img_size, interpolation=cv2.INTER_NEAREST)
+                    labels[label] = bm
+
+        return img, labels
+
     def transform_data(self, input, labels):
 
         # convert image to numpy array

@@ -384,7 +384,7 @@ class Backwardmapper(pl.LightningModule):
 
     def loss_calculation(self, inputs, labels, log_type = 'train'):
         encoded=self.encoder(inputs)
-        #encoded=encoded.unsqueeze(-1).unsqueeze(-1)
+        encoded=encoded.unsqueeze(-1).unsqueeze(-1)
         decoded=self.decoder(encoded)
 
         l1_loss = self.L1_loss(decoded,labels['warped_bm'])
@@ -433,7 +433,7 @@ class Backwardmapper(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         inputs, labels = batch
-        loss = self.loss_calculation(inputs, labels, log_type = 'val')
+        loss = self.loss_calculation(inputs, labels, log_type = 'validation')
         self.log("validation_loss", loss, on_step=False, on_epoch=True)
         return loss
 
@@ -447,12 +447,12 @@ class Backwardmapper(pl.LightningModule):
         #optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         #return optimizer
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay, amsgrad=True)
-        sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3, verbose=True)
+        sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True)
         return {
         'optimizer': optimizer,
         'lr_scheduler': {
             'scheduler': sched,
-            'monitor': 'val_loss',
+            'monitor': 'validation_loss',
             }
         }
         #return optimizer

@@ -1,6 +1,7 @@
 {
     "train_wc": 
         {
+            "img_size" : 256,
             "input_nc" : 3, 
             "output_nc" : 8, 
             "num_downs" : 5, 
@@ -10,11 +11,17 @@
             "lr" : 1e-3, 
             "weight_decay" : 5e-4,
             "data_path" : "/home/sander/Inv3D_pre/inv3d/data/",
-            "batch_size_train" : 1,
+            "batch_size_train" : 32,
+            "batch_size_val" : 16,
+            "batch_size_test" : 16,
             "gpus" : 1,
-            "max_epochs" : 100,
-            "save_name" : "wc_test3",
-            "log_every_n_steps" : 5
+            "max_epochs" : 250,
+            "save_name" : "monster_wc",
+            "use_pretrained_model_name" : "",
+            "use_pretrained" : 0,
+            "log_every_n_steps" : 20,
+            "check_val_every_n_epoch" : 1,
+            "early_stopping_patience" : 10
 
         },   
 
@@ -25,7 +32,7 @@
             "out_channels" : 2, 
             "filters" : 32,
             "fc_units" : 100,
-            "lr" : 1e-3, 
+            "lr" : 1e-4, 
             "weight_decay" : 5e-4,
             "data_path" : "/home/sander/Inv3D_pre/inv3d/data/",
             "batch_size_train" : 32,
@@ -33,11 +40,12 @@
             "batch_size_test" : 16,
             "gpus" : 1,
             "max_epochs" : 250,
-            "save_name" : "test",
-            "use_pretrained" : 0,
-            "use_pretrained_model_name" : "test",
-            "log_every_n_steps" : 25,
-            "check_val_every_n_epoch" : 5
+            "save_name" : "monster_bm_v3",
+            "use_pretrained" : 1,
+            "use_pretrained_model_name" : "monster_bm_v2",
+            "log_every_n_steps" : 20,
+            "check_val_every_n_epoch" : 1,
+            "early_stopping_patience" : 10
 
         },
 
@@ -54,13 +62,19 @@
             "lr" : 1e-3, 
             "weight_decay" : 5e-4,
             "data_path" : "/home/sander/Inv3D_pre/inv3d/data/",
-            "batch_size_train" : 2,
+            "batch_size_train" : 32,
+            "batch_size_val" : 16,
+            "batch_size_test" : 16,
             "gpus" : 1,
             "max_epochs" : 500,
             "save_name" : "crease_test",
             "load_3d" : "wc_test2",
             "load_bm" : "bm_test",
-            "log_every_n_steps" : 9
+            "use_pretrained_model_name" : "",
+            "use_pretrained" : 0,
+            "log_every_n_steps" : 20,
+            "check_val_every_n_epoch" : 1,
+            "early_stopping_patience" : 10
 
         }
 

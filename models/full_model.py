@@ -80,7 +80,7 @@ class crease(pl.LightningModule):
         backward_map = self.backward_map_estimator(wc_coordinates[:,0:3,:,:])
 
         
-        norm_loss = torch.norm((backward_map - labels['warped_bm']),p=1,dim=(1))
+        bm_loss = torch.norm((backward_map - labels['warped_bm']),p=1,dim=(1))
         
         angles_map = angles.calc_angles_torch(backward_map.transpose(1,2).transpose(2,3))
         warped_angle = angles.warp_grid_torch(angles_map, labels['warped_uv'].transpose(1,2).transpose(2,3))
@@ -93,7 +93,7 @@ class crease(pl.LightningModule):
         l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
         l_angle = l_angle * labels['warped_text_mask']
 
-        loss = l3d_loss + norm_loss + l_angle
+        loss = l3d_loss + bm_loss + l_angle
         loss = torch.mean(loss)
         return loss
     
@@ -117,15 +117,15 @@ class crease(pl.LightningModule):
         return loss
     
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        return optimizer
+        #optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        #return optimizer
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay, amsgrad=True)
-        sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
+        sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True)
         return {
         'optimizer': optimizer,
         'lr_scheduler': {
             'scheduler': sched,
-            'monitor': 'train_loss',
+            'monitor': 'validation_loss',
             }
         }
 

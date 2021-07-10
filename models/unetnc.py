@@ -78,7 +78,7 @@ class Estimator3d(pl.LightningModule):
 
         outputs = self.model(images)
         loss = self.loss_calculation(outputs, labels)
-        self.log("loss", loss)
+        self.log("train_loss", loss, on_step=False, on_epoch=True)
         return loss
  
     
@@ -87,7 +87,7 @@ class Estimator3d(pl.LightningModule):
         outputs = self.forward(images)
 
         loss = self.loss_calculation(outputs, labels)
-        self.log("val_loss", loss, on_epoch=True) 
+        self.log("validation_loss", loss, on_step=False, on_epoch=True) 
         return loss
 
     def test_step(self, batch, batch_idx):
@@ -95,20 +95,20 @@ class Estimator3d(pl.LightningModule):
         outputs = self.forward(images)
 
         loss = self.loss_calculation(outputs, labels)
-        self.log("test_loss", loss, on_epoch=True) 
+        self.log("test_loss", loss, on_step=False, on_epoch=True) 
         return loss
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        return optimizer
+        #optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        #return optimizer
         
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay, amsgrad=True)
-        sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
+        sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True)
         return {
         'optimizer': optimizer,
         'lr_scheduler': {
             'scheduler': sched,
-            'monitor': 'loss',
+            'monitor': 'validation_loss',
             }
         }#'''
 

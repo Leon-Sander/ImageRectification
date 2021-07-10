@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="2"
+os.environ["CUDA_VISIBLE_DEVICES"]="4"
 from models import unetnc, backwardmapper, full_model
 from custom_dataset import CustomImageDataset_wc, Dataset_backward_mapping, Dataset_full_model
 from torch.utils.data import DataLoader
@@ -9,6 +9,7 @@ import sys
 import json
 import torch
 from pytorch_lightning.loggers import TensorBoardLogger
+from pytorch_lightning.callbacks import EarlyStopping
 
 
 def main(args):
@@ -27,22 +28,25 @@ def main(args):
                                     use_dropout= bool(config['train_wc']['use_dropout']),
                                     lr = config['train_wc']['lr'],
                                     weight_decay = config['train_wc']['weight_decay'])
-        #model.load_state_dict(torch.load('models/pretrained/wc_test2.pkl'))
+        if bool(config['train_wc']['use_pretrained']):
+            model.load_state_dict(torch.load('models/pretrained/' + config['train_wc']['use_pretrained_model_name'] + '.pkl'))
 
-        dataset_train = CustomImageDataset_wc(data_dir=DATA_PATH+'train/', transform=True)
-        #dataset_val = CustomImageDataset_wc(data_dir=DATA_PATH+'val/', transform=True)
-        #dataset_test = CustomImageDataset_wc(data_dir=DATA_PATH+'test/', transform=True)
+        dataset_train = CustomImageDataset_wc(data_dir=DATA_PATH+'train/', transform=True, img_size=config['train_wc']['img_size'])
+        dataset_val = CustomImageDataset_wc(data_dir=DATA_PATH+'val/', transform=True, img_size=config['train_wc']['img_size'])
+        dataset_test = CustomImageDataset_wc(data_dir=DATA_PATH+'test/', transform=True, img_size=config['train_wc']['img_size'])
 
         train_loader = DataLoader(dataset_train, batch_size= config['train_wc']['batch_size_train'], num_workers=12)
-        #val_loader = DataLoader(dataset_val, batch_size= config['train_wc']['batch_size_train'], num_workers=12)
-        #test_loader = DataLoader(dataset_test, batch_size= config['train_wc']['batch_size_train'], num_workers=12)
+        val_loader = DataLoader(dataset_val, batch_size= config['train_wc']['batch_size_val'], num_workers=12)
+        test_loader = DataLoader(dataset_test, batch_size= config['train_wc']['batch_size_test'], num_workers=12)
 
-
+        early_stop_callback = EarlyStopping(monitor='validation_loss', min_delta=0.001, patience=15, verbose=True, mode='min')
         trainer = pl.Trainer(gpus=config['train_wc']['gpus'], max_epochs = config['train_wc']['max_epochs'],
-                            log_every_n_steps=config['train_wc']['log_every_n_steps'])
-        trainer.fit(model, train_loader)
+                            log_every_n_steps=config['train_wc']['log_every_n_steps'],
+                            check_val_every_n_epoch = config['train_wc']['check_val_every_n_epoch'],
+                            callbacks=early_stop_callback)
+        trainer.fit(model, train_loader, val_loader)
         torch.save(model.state_dict(), 'models/pretrained/' + config['train_wc']['save_name'] + '.pkl')
-
+        trainer.test(model, test_loader)
 
     elif args['model'] == 'train_backwardmapper':
         DATA_PATH = config['train_backwardmapper']['data_path']
@@ -67,11 +71,13 @@ def main(args):
         test_loader = DataLoader(dataset_test, batch_size= config['train_backwardmapper']['batch_size_test'], num_workers=12)
         train_loader = DataLoader(train_dataset_bm, batch_size= config['train_backwardmapper']['batch_size_train'], num_workers=12)
         
-
+        early_stop_callback = EarlyStopping(monitor='validation_loss', min_delta=0.001, patience=config['train_backwardmapper']['early_stopping_patience'],
+                                             verbose=True, mode='min')
         #logger = TensorBoardLogger("tb_logs", name=config['train_backwardmapper']['save_name'])
         trainer = pl.Trainer(gpus=config['train_backwardmapper']['gpus'], max_epochs = config['train_backwardmapper']['max_epochs'],
                             log_every_n_steps=config['train_backwardmapper']['log_every_n_steps'],
-                            check_val_every_n_epoch = config['train_backwardmapper']['check_val_every_n_epoch'])
+                            check_val_every_n_epoch = config['train_backwardmapper']['check_val_every_n_epoch'],
+                            callbacks=early_stop_callback)
 
         trainer.fit(model_bm, train_loader, val_loader)
         torch.save(model_bm.state_dict(), 'models/pretrained/' + config['train_backwardmapper']['save_name'] + '.pkl')
@@ -92,13 +98,30 @@ def main(args):
                                 load_3d =config['train_full']['load_3d'],
                                 load_bm = config['train_full']['load_bm'])
 
-        trainer = pl.Trainer(gpus=config['train_full']['gpus'], max_epochs = config['train_full']['max_epochs'],
-                            log_every_n_steps=config['train_full']['log_every_n_steps'])
+        if bool(config['train_full']['use_pretrained']):
+            model.load_state_dict(torch.load('models/pretrained/' + config['train_full']['use_pretrained_model_name'] + '.pkl'))
+
+        early_stop_callback = EarlyStopping(monitor='validation_loss', min_delta=0.001, patience=config['train_full']['early_stopping_patience'],
+                                        verbose=True, mode='min')
+
+
         dataset_train = Dataset_full_model(data_dir=DATA_PATH+'train/')
+        dataset_val = Dataset_backward_mapping(data_dir=DATA_PATH+'val/', img_size=config['train_full']['img_size'])
+        dataset_test = Dataset_backward_mapping(data_dir=DATA_PATH+'test/', img_size=config['train_full']['img_size'])
+        
+
         train_loader = DataLoader(dataset_train, batch_size= config['train_full']['batch_size_train'], num_workers=12)
+        val_loader = DataLoader(dataset_val, batch_size= config['train_full']['batch_size_val'], num_workers=12)
+        test_loader = DataLoader(dataset_test, batch_size= config['train_full']['batch_size_test'], num_workers=12)
+
+        trainer = pl.Trainer(gpus=config['train_full']['gpus'], max_epochs = config['train_full']['max_epochs'],
+                    log_every_n_steps=config['train_full']['log_every_n_steps'],
+                    check_val_every_n_epoch = config['train_full']['check_val_every_n_epoch'],
+                    callbacks=early_stop_callback)
+
         trainer.fit(model, train_loader)
         torch.save(model.state_dict(), 'models/pretrained/' + config['train_full']['save_name'] + '.pkl')
-
+        trainer.test(model, test_loader)
 
     else:
         print('You have to specify one of the models train_wc, train_backwardmapper, train_full')
