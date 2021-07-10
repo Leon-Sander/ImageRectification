@@ -405,7 +405,8 @@ class Backwardmapper(pl.LightningModule):
         msssim_metric = ms_ssim( decoded, labels['warped_bm'], data_range=1, size_average=True)
         self.log('ms_ssim_' + log_type, msssim_metric, on_step=False, on_epoch=True)
 
-        epe= torch.sum(torch.norm((decoded - labels['warped_bm']),p=1,dim=(1))) / (self.img_size[0] * self.img_size[1])
+        #epe= torch.sum(torch.norm((decoded - labels['warped_bm']),p=1,dim=(1))) / (self.img_size[0] * self.img_size[1])
+        epe= torch.mean(torch.norm((decoded - labels['warped_bm']),p=1,dim=(1)))
         self.log('epe_' + log_type,epe, on_step=False, on_epoch=True)
 
         loss = torch.mean(l1_loss + l_angle)

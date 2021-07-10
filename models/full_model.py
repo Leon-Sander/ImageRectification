@@ -7,6 +7,7 @@ from models.backwardmapper import Backwardmapper
 import angles
 import math
 import torch.nn.functional as F
+from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
 
 class crease(pl.LightningModule):
     def __init__(self, num_downs = 5, input_nc_wc = 3, output_nc_wc = 8, img_size = 256 , use_pre_trained = False, ngf_wc=64,
@@ -73,7 +74,7 @@ class crease(pl.LightningModule):
 
         return loss
 
-    def loss_calculation(self, images, labels):
+    def loss_calculation(self, images, labels, log_type = 'train'):
         wc_coordinates = self.estimator3d(images)
         l3d_loss = self.l1_loss_calculation(wc_coordinates, labels)
 
@@ -81,7 +82,13 @@ class crease(pl.LightningModule):
 
         
         bm_loss = torch.norm((backward_map - labels['warped_bm']),p=1,dim=(1))
-        
+
+        epe= torch.mean(torch.norm((backward_map - labels['warped_bm']),p=1,dim=(1)))
+        self.log('epe_' + log_type,epe, on_step=False, on_epoch=True)
+        msssim_metric = ms_ssim( backward_map, labels['warped_bm'], data_range=1, size_average=True)
+        self.log('ms_ssim_' + log_type, msssim_metric, on_step=False, on_epoch=True)
+
+
         angles_map = angles.calc_angles_torch(backward_map.transpose(1,2).transpose(2,3))
         warped_angle = angles.warp_grid_torch(angles_map, labels['warped_uv'].transpose(1,2).transpose(2,3))
         warped_angle = warped_angle.transpose(3,2).transpose(2,1)
@@ -101,19 +108,19 @@ class crease(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         inputs, labels = batch
         loss = self.loss_calculation(inputs, labels)
-        self.log("train_loss", loss)
+        self.log("train_loss", loss, on_step=False, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
         inputs, labels = batch
-        loss = self.loss_calculation(inputs, labels)
-        self.log("validation_loss", loss)
+        loss = self.loss_calculation(inputs, labels, log_type= 'validation')
+        self.log("validation_loss", loss, on_step=False, on_epoch=True)
         return loss
 
     def test_step(self, batch, batch_idx):
         inputs, labels = batch
-        loss = self.loss_calculation(inputs, labels)
-        self.log("test_loss", loss)
+        loss = self.loss_calculation(inputs, labels, log_type= 'test')
+        self.log("test_loss", loss, on_step=False, on_epoch=True)
         return loss
     
     def configure_optimizers(self):
