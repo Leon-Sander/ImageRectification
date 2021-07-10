@@ -4,6 +4,8 @@ from torch.nn import init
 import functools
 import pytorch_lightning as pl
 import math
+import torch.nn as nn
+
 
 class Estimator3d(pl.LightningModule):
     def __init__(self, input_nc, output_nc, num_downs, ngf=64,
@@ -13,6 +15,7 @@ class Estimator3d(pl.LightningModule):
 
         self.lr = lr
         self.weight_decay = weight_decay
+        self.L1_loss = nn.L1Loss(reduction='none')
 
         # construct unet structure
         unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=None, norm_layer=norm_layer, innermost=True)
@@ -28,24 +31,30 @@ class Estimator3d(pl.LightningModule):
     def forward(self, input):
         return self.model(input)
 
-    def l_angle_def(self, theta_x, theta_y, theta_x_gt, theta_y_gt , type = 'paper'):
+    def l_angle_def(self, theta_x, theta_y, theta_x_gt, theta_y_gt , type = 'paper', p_x = 0, p_y = 0):
         if type == 'paper':
-            l_x = (torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi) % (2*math.pi)
-            l_y = (torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi) % (2*math.pi)
+            l_x = ((torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi)* p_x) % (2*math.pi)
+            l_y = ((torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi)* p_y) % (2*math.pi)
             l_angle = torch.add(l_x, l_y)
             return l_angle
         else:
-            l_x = (math.pi) - torch.abs((torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi))
-            l_y = (math.pi) - torch.abs((torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi))
+            #l_x = (math.pi) - torch.abs((torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi))
+            #l_y = (math.pi) - torch.abs((torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi))
+
             #l_x = (math.pi) - torch.abs((torch.norm(torch.sub(theta_x, theta_x_gt),p=2,dim=(1)) - math.pi))
             #l_y = (math.pi) - torch.abs((torch.norm(torch.sub(theta_y, theta_y_gt),p=2,dim=(1)) - math.pi))
+
+            l_x = ((math.pi) - torch.abs((torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi))) * p_x
+            l_y = ((math.pi) - torch.abs((torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi))) * p_y
+
             l_angle = torch.add(l_x, l_y)
             return l_angle
             
 
     def loss_calculation(self, outputs, labels):
         wc_coordinates = outputs[:,0:3,:,:]
-        l1_loss = torch.norm((wc_coordinates - labels['wc_gt']),p=1,dim=(1))
+        #l1_loss = torch.norm((wc_coordinates - labels['wc_gt']),p=1,dim=(1))
+        l1_loss = self.L1_loss(wc_coordinates,labels['wc_gt'])
 
         
         phi_xx = outputs[:,3:4,:,:]
@@ -58,15 +67,24 @@ class Estimator3d(pl.LightningModule):
 
         theta_x = torch.atan2(phi_xx, phi_xy)
         theta_y = torch.atan2(phi_yx, phi_yy)
-        #p_x = torch.norm(phi_xx, phi_xy,p=2,dim=(1,2,3)) Bei der Norm darf nur ein Wert eingegeben Werden
-        #p_y = torch.norm(phi_yx, phi_yy,p=2,dim=(1,2,3))
+
+        p_x = torch.norm((phi_xx - phi_xy),p=2,dim=(1)) #Bei der Norm darf nur ein Wert eingegeben Werden
+        p_y = torch.norm((phi_yx - phi_yy),p=2,dim=(1))
+        p_x = p_x.unsqueeze(1)
+        p_y = p_y.unsqueeze(1)
+
         theta_x_gt = labels['warped_angle_gt'][:,0:1,:,:]
         theta_y_gt = labels['warped_angle_gt'][:,1:2,:,:]
-        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
+        #l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
+        #l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test', p_x, p_y)
+        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test', p_x, p_y)
         l_angle = l_angle * labels['warped_text_mask']
 
         
-        l_curvature = torch.norm((curvature_mesh - labels['warped_curvature_gt']),p=2,dim=(1))
+        #l_curvature = torch.norm((curvature_mesh - labels['warped_curvature_gt']),p=2,dim=(1))
+        #l_curvature = self.L1_loss(curvature_mesh,labels['warped_curvature_gt'])
+        l_curvature = torch.norm((curvature_mesh- labels['warped_curvature_gt']),p=2,dim=(1))
+        l_curvature = l_curvature.unsqueeze(1)
         
         loss = l1_loss + l_angle + l_curvature
         loss = torch.mean(loss)
@@ -103,7 +121,7 @@ class Estimator3d(pl.LightningModule):
         #return optimizer
         
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay, amsgrad=True)
-        sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True)
+        sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=25, verbose=True)
         return {
         'optimizer': optimizer,
         'lr_scheduler': {

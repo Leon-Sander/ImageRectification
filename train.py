@@ -1,5 +1,5 @@
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]="4"
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
 from models import unetnc, backwardmapper, full_model
 from custom_dataset import CustomImageDataset_wc, Dataset_backward_mapping, Dataset_full_model
 from torch.utils.data import DataLoader
@@ -77,7 +77,8 @@ def main(args):
         trainer = pl.Trainer(gpus=config['train_backwardmapper']['gpus'], max_epochs = config['train_backwardmapper']['max_epochs'],
                             log_every_n_steps=config['train_backwardmapper']['log_every_n_steps'],
                             check_val_every_n_epoch = config['train_backwardmapper']['check_val_every_n_epoch'],
-                            callbacks=early_stop_callback)
+                            callbacks=early_stop_callback)#,
+                            #resume_from_checkpoint = '/home/sander/code/ImageRectification/lightning_logs/version_10/checkpoints/epoch=71-step=7559.ckpt')
 
         trainer.fit(model_bm, train_loader, val_loader)
         torch.save(model_bm.state_dict(), 'models/pretrained/' + config['train_backwardmapper']['save_name'] + '.pkl')
@@ -98,16 +99,16 @@ def main(args):
                                 load_3d =config['train_full']['load_3d'],
                                 load_bm = config['train_full']['load_bm'])
 
-        if bool(config['train_full']['use_pretrained']):
+        if bool(config['train_full']['use_pretrained_crease']):
             model.load_state_dict(torch.load('models/pretrained/' + config['train_full']['use_pretrained_model_name'] + '.pkl'))
 
         early_stop_callback = EarlyStopping(monitor='validation_loss', min_delta=0.001, patience=config['train_full']['early_stopping_patience'],
                                         verbose=True, mode='min')
 
 
-        dataset_train = Dataset_full_model(data_dir=DATA_PATH+'train/')
-        dataset_val = Dataset_backward_mapping(data_dir=DATA_PATH+'val/', img_size=config['train_full']['img_size'])
-        dataset_test = Dataset_backward_mapping(data_dir=DATA_PATH+'test/', img_size=config['train_full']['img_size'])
+        dataset_train = Dataset_full_model(data_dir=DATA_PATH+'train/', img_size=config['train_full']['img_size'])
+        dataset_val = Dataset_full_model(data_dir=DATA_PATH+'val/', img_size=config['train_full']['img_size'])
+        dataset_test = Dataset_full_model(data_dir=DATA_PATH+'test/', img_size=config['train_full']['img_size'])
         
 
         train_loader = DataLoader(dataset_train, batch_size= config['train_full']['batch_size_train'], num_workers=12)
@@ -119,7 +120,7 @@ def main(args):
                     check_val_every_n_epoch = config['train_full']['check_val_every_n_epoch'],
                     callbacks=early_stop_callback)
 
-        trainer.fit(model, train_loader)
+        trainer.fit(model, train_loader, val_loader)
         torch.save(model.state_dict(), 'models/pretrained/' + config['train_full']['save_name'] + '.pkl')
         trainer.test(model, test_loader)
 

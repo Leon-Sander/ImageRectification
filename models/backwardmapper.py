@@ -448,7 +448,7 @@ class Backwardmapper(pl.LightningModule):
         #optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         #return optimizer
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay, amsgrad=True)
-        sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=5, verbose=True)
+        sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=25, verbose=True)
         return {
         'optimizer': optimizer,
         'lr_scheduler': {

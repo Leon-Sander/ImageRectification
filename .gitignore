@@ -4,6 +4,7 @@ lightning_logs
 doc
 images.ipynb
 Inv3D_pre
+pretrained_2
 # Editors
 .vscode/
 .idea/

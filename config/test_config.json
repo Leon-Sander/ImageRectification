@@ -1,0 +1,42 @@
+{
+    "train_wc": 
+        {
+            "img_size" : 256,
+            "data_path" : "/home/sander/Inv3D_pre/inv3d/data/",
+            "batch_size_test" : 16,
+            "gpus" : 1,
+            "max_epochs" : 300,
+            "use_pretrained_model_name" : "monster_wc",
+            "log_every_n_steps" : 20
+
+        },   
+
+    "train_backwardmapper": 
+        {
+            "img_size" :256, 
+            "data_path" : "/home/sander/Inv3D_pre/inv3d/data/",
+            "batch_size_test" : 16,
+            "gpus" : 1,
+            "max_epochs" : 300,
+            "use_pretrained_model_name" : "monster_bm_epe_v2",
+            "log_every_n_steps" : 20
+
+        },
+
+    "train_full":
+        {
+
+            "img_size" : 256 , 
+            "data_path" : "/home/sander/Inv3D_pre/inv3d/data/",
+            "batch_size_test" : 16,
+            "gpus" : 1,
+            "max_epochs" : 500,
+            "load_3d" : "monster_wc_v1",
+            "load_bm" : "monster_bm_v3",
+            "use_pretrained_model_name" : "",
+            "log_every_n_steps" : 20
+
+
+        }
+
+}

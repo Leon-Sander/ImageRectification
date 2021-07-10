@@ -15,13 +15,13 @@
             "batch_size_val" : 16,
             "batch_size_test" : 16,
             "gpus" : 1,
-            "max_epochs" : 250,
-            "save_name" : "monster_wc",
+            "max_epochs" : 1500,
+            "save_name" : "monster_wc_longrun",
             "use_pretrained_model_name" : "",
             "use_pretrained" : 0,
             "log_every_n_steps" : 20,
             "check_val_every_n_epoch" : 1,
-            "early_stopping_patience" : 10
+            "early_stopping_patience" : 150
 
         },   
 
@@ -32,20 +32,20 @@
             "out_channels" : 2, 
             "filters" : 32,
             "fc_units" : 100,
-            "lr" : 1e-4, 
+            "lr" : 1e-3, 
             "weight_decay" : 5e-4,
             "data_path" : "/home/sander/Inv3D_pre/inv3d/data/",
             "batch_size_train" : 32,
             "batch_size_val" : 16,
             "batch_size_test" : 16,
             "gpus" : 1,
-            "max_epochs" : 250,
-            "save_name" : "monster_bm_epe",
+            "max_epochs" : 1500,
+            "save_name" : "monster_bm_longrun",
             "use_pretrained" : 0,
             "use_pretrained_model_name" : "monster_bm_v2",
             "log_every_n_steps" : 20,
             "check_val_every_n_epoch" : 1,
-            "early_stopping_patience" : 10
+            "early_stopping_patience" : 150
 
         },
 
@@ -67,14 +67,14 @@
             "batch_size_test" : 16,
             "gpus" : 1,
             "max_epochs" : 500,
-            "save_name" : "crease_test",
-            "load_3d" : "wc_test2",
-            "load_bm" : "bm_test",
+            "save_name" : "crease_monster_best",
+            "load_3d" : "monster_wc_phi",
+            "load_bm" : "monster_bm_v3",
             "use_pretrained_model_name" : "",
-            "use_pretrained" : 0,
+            "use_pretrained_crease" : 0,
             "log_every_n_steps" : 20,
             "check_val_every_n_epoch" : 1,
-            "early_stopping_patience" : 10
+            "early_stopping_patience" : 15
 
         }
 
