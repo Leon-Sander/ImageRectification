@@ -1,5 +1,5 @@
 import os
-#os.environ["CUDA_VISIBLE_DEVICES"]="2"
+os.environ["CUDA_VISIBLE_DEVICES"]="2"
 from models import unetnc, backwardmapper, full_model
 from custom_dataset import CustomImageDataset_wc, Dataset_backward_mapping, Dataset_full_model
 from torch.utils.data import DataLoader
@@ -58,9 +58,9 @@ def main(args):
         if bool(config['train_backwardmapper']['use_pretrained']):
 
             model_bm.load_state_dict(torch.load('models/pretrained/' + config['train_backwardmapper']['use_pretrained_model_name'] + '.pkl'))
-        train_dataset_bm = Dataset_backward_mapping(data_dir=DATA_PATH+'train/')
-        dataset_val = Dataset_backward_mapping(data_dir=DATA_PATH+'val/')
-        dataset_test = Dataset_backward_mapping(data_dir=DATA_PATH+'test/')
+        train_dataset_bm = Dataset_backward_mapping(data_dir=DATA_PATH+'train/', img_size=config['train_backwardmapper']['img_size'])
+        dataset_val = Dataset_backward_mapping(data_dir=DATA_PATH+'val/', img_size=config['train_backwardmapper']['img_size'])
+        dataset_test = Dataset_backward_mapping(data_dir=DATA_PATH+'test/', img_size=config['train_backwardmapper']['img_size'])
         
         
         val_loader = DataLoader(dataset_val, batch_size= config['train_backwardmapper']['batch_size_val'], num_workers=12)
@@ -71,7 +71,7 @@ def main(args):
         #logger = TensorBoardLogger("tb_logs", name=config['train_backwardmapper']['save_name'])
         trainer = pl.Trainer(gpus=config['train_backwardmapper']['gpus'], max_epochs = config['train_backwardmapper']['max_epochs'],
                             log_every_n_steps=config['train_backwardmapper']['log_every_n_steps'],
-                            check_val_every_n_epoch = 5)
+                            check_val_every_n_epoch = config['train_backwardmapper']['check_val_every_n_epoch'])
 
         trainer.fit(model_bm, train_loader, val_loader)
         torch.save(model_bm.state_dict(), 'models/pretrained/' + config['train_backwardmapper']['save_name'] + '.pkl')

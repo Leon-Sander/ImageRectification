@@ -73,9 +73,12 @@ class CustomImageDataset_wc(Dataset):
     @staticmethod
     def calculate_min_and_max(data_dir, img_size):
         
-        p = Path('./')
-        folder = list(p.glob(data_dir + '*/'))
-
+        #p = Path('./')
+        #folder = list(p.glob(data_dir + '*/'))
+        ordner = sorted(os.listdir(data_dir))
+        folder = []
+        for item in ordner:
+            folder.append(data_dir + item )
 
         xmx, xmn, ymx, ymn, zmx, zmn = 0,0,0,0,0,0
         curv_mx = 0
@@ -134,13 +137,14 @@ class CustomImageDataset_wc(Dataset):
             if curv_local_mx > curv_mx:
                 curv_mx = curv_local_mx
 
-        return xmx, xmn, ymx, ymn,zmx, zmn, curv_mx 
+        return (xmx, xmn, ymx, ymn,zmx, zmn, curv_mx) 
 
     def transform_labels(self, labels):
         lbl = labels['wc_gt']
         msk=((lbl[:,:,0]!=0)&(lbl[:,:,1]!=0)&(lbl[:,:,2]!=0)).astype(np.uint8)*255
         #xmx, xmn, ymx, ymn,zmx, zmn= 1.2539363, -1.2442188, 1.2396319, -1.2289206, 0.6436657, -0.67492497   # calculate from all the wcs
-        xmx, xmn, ymx, ymn,zmx, zmn= 1.0858383, -1.0862498, 0.8847823, -0.8838696, 0.31327668, -0.30930856 # preview
+        #xmx, xmn, ymx, ymn,zmx, zmn= 1.0858383, -1.0862498, 0.8847823, -0.8838696, 0.31327668, -0.30930856 # preview
+        xmx, xmn, ymx, ymn,zmx, zmn= 1.2361085,-1.2319995, 1.2294204, -1.210581, 0.5923838, -0.62981504
         lbl[:,:,0]= (lbl[:,:,0]-zmn)/(zmx-zmn)
         lbl[:,:,1]= (lbl[:,:,1]-ymn)/(ymx-ymn)
         lbl[:,:,2]= (lbl[:,:,2]-xmn)/(xmx-xmn)
@@ -151,7 +155,7 @@ class CustomImageDataset_wc(Dataset):
         lbl = torch.from_numpy(lbl).float()
         labels['wc_gt'] = lbl
 
-        curv_mx = 0.014783481 #curvature
+        curv_mx = 0.02297426 #curvature
 
         for label in labels:
             if label != 'wc_gt':
@@ -233,11 +237,12 @@ class Dataset_backward_mapping(Dataset):
                 bm = labels[label]
                 bm = np.array(bm, dtype=np.float64)
 
-                bm = bm*255
+                bm = bm*448
                 bm[:,:,1]=bm[:,:,1]-t
                 bm[:,:,0]=bm[:,:,0]-l
-                bm=bm/np.array([float(self.img_size[0])-l-r, float(self.img_size[1])-t-b])
+                bm=bm/np.array([float(448)-l-r, float(448)-t-b])
                 bm=(bm-0.5)*2
+                bm = cv2.resize(bm, self.img_size, interpolation=cv2.INTER_NEAREST)
                 labels[label] = bm
 
         return fm, labels
@@ -245,8 +250,7 @@ class Dataset_backward_mapping(Dataset):
     def transform_data(self, input, labels):
         lbl = input
         msk=((lbl[:,:,0]!=0)&(lbl[:,:,1]!=0)&(lbl[:,:,2]!=0)).astype(np.uint8)*255
-        #xmx, xmn, ymx, ymn,zmx, zmn= 1.2539363, -1.2442188, 1.2396319, -1.2289206, 0.6436657, -0.67492497   # calculate from all the wcs
-        xmx, xmn, ymx, ymn,zmx, zmn= 1.0858383, -1.0862498, 0.8847823, -0.8838696, 0.31327668, -0.30930856 # preview
+        xmx, xmn, ymx, ymn,zmx, zmn= 1.2361085,-1.2319995, 1.2294204, -1.210581, 0.5923838, -0.62981504
         lbl[:,:,0]= (lbl[:,:,0]-zmn)/(zmx-zmn)
         lbl[:,:,1]= (lbl[:,:,1]-ymn)/(ymx-ymn)
         lbl[:,:,2]= (lbl[:,:,2]-xmn)/(xmx-xmn)
@@ -325,8 +329,7 @@ class Dataset_full_model(Dataset):
         
         lbl = labels['wc_gt']
         msk=((lbl[:,:,0]!=0)&(lbl[:,:,1]!=0)&(lbl[:,:,2]!=0)).astype(np.uint8)*255
-        #xmx, xmn, ymx, ymn,zmx, zmn= 1.2539363, -1.2442188, 1.2396319, -1.2289206, 0.6436657, -0.67492497   # calculate from all the wcs
-        xmx, xmn, ymx, ymn,zmx, zmn= 1.0858383, -1.0862498, 0.8847823, -0.8838696, 0.31327668, -0.30930856 # preview
+        xmx, xmn, ymx, ymn,zmx, zmn= 1.2361085,-1.2319995, 1.2294204, -1.210581, 0.5923838, -0.62981504
         lbl[:,:,0]= (lbl[:,:,0]-zmn)/(zmx-zmn)
         lbl[:,:,1]= (lbl[:,:,1]-ymn)/(ymx-ymn)
         lbl[:,:,2]= (lbl[:,:,2]-xmn)/(xmx-xmn)
@@ -337,7 +340,7 @@ class Dataset_full_model(Dataset):
         lbl = torch.from_numpy(lbl).float()
         labels['wc_gt'] = lbl
 
-        curv_mx = 0.015919654 #curvature
+        curv_mx = 0.02297426 #curvature
 
         for label in labels:
             if label != 'wc_gt':

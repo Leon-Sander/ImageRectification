@@ -363,6 +363,7 @@ def plt_bm_gt_cropped(path, bm_model):
 
     img_cropped = labels['img'].unsqueeze(0)
 
+    print(labels['warped_bm'].shape, labels['warped_bm'].max(), labels['warped_bm'].min())
     
     bm_pred = bm_model(wc.unsqueeze(0))
     unwarped_image_pred = unwarp_image(img_cropped,bm_pred)
@@ -387,6 +388,7 @@ def plt_bm_gt_cropped(path, bm_model):
     plt.axis('off')
 
 def crop_all(data_path):
+    img_size = (256,256)
     input = np.load(data_path + '/warped_WC.npz')['warped_WC']
     
     labels = {}
@@ -407,7 +409,7 @@ def crop_all(data_path):
     maxy = max(y)
     
     fm = fm[miny : maxy + 1, minx : maxx + 1, :]
-    fm = cv2.resize(fm, (256,256), interpolation=cv2.INTER_NEAREST)
+    fm = cv2.resize(fm, img_size, interpolation=cv2.INTER_NEAREST)
 
     for label in labels:
         if label != 'warped_bm':
@@ -415,7 +417,7 @@ def crop_all(data_path):
             im = np.array(im, dtype=np.float64)
             #ic(label, im.shape)
             im = im[miny : maxy + 1, minx : maxx + 1, :]
-            im = cv2.resize(im, (256,256), interpolation=cv2.INTER_NEAREST)
+            im = cv2.resize(im, img_size, interpolation=cv2.INTER_NEAREST)
             if label == 'warped_text_mask':
                 im = np.expand_dims(im, axis=2)
             #ic(label, im.shape)
@@ -430,24 +432,26 @@ def crop_all(data_path):
             bm = labels[label]
             bm = np.array(bm, dtype=np.float64)
 
-            bm = bm*255
+            #bm = bm*255
+            bm = bm*448
             bm[:,:,1]=bm[:,:,1]-t
             bm[:,:,0]=bm[:,:,0]-l
-            bm=bm/np.array([float(256)-l-r, float(256)-t-b])
+            bm=bm/np.array([float(448)-l-r, float(448)-t-b])
             bm=(bm-0.5)*2
+            bm = cv2.resize(bm, img_size, interpolation=cv2.INTER_NEAREST)
             labels[label] = bm
 
             #lbl = input
 
     lbl = fm
     msk=((lbl[:,:,0]!=0)&(lbl[:,:,1]!=0)&(lbl[:,:,2]!=0)).astype(np.uint8)*255
-    #xmx, xmn, ymx, ymn,zmx, zmn= 1.2539363, -1.2442188, 1.2396319, -1.2289206, 0.6436657, -0.67492497   # calculate from all the wcs
-    xmx, xmn, ymx, ymn,zmx, zmn= 1.0858383, -1.0862498, 0.8847823, -0.8838696, 0.31327668, -0.30930856 # preview
+    xmx, xmn, ymx, ymn,zmx, zmn= 1.2361085,-1.2319995, 1.2294204, -1.210581, 0.5923838, -0.62981504   # calculate from all the wcs
+    #xmx, xmn, ymx, ymn,zmx, zmn= 1.0858383, -1.0862498, 0.8847823, -0.8838696, 0.31327668, -0.30930856 # preview
     lbl[:,:,0]= (lbl[:,:,0]-zmn)/(zmx-zmn)
     lbl[:,:,1]= (lbl[:,:,1]-ymn)/(ymx-ymn)
     lbl[:,:,2]= (lbl[:,:,2]-xmn)/(xmx-xmn)
     lbl=cv2.bitwise_and(lbl,lbl,mask=msk)
-    lbl = cv2.resize(lbl, (256,256), interpolation=cv2.INTER_NEAREST)
+    lbl = cv2.resize(lbl, img_size, interpolation=cv2.INTER_NEAREST)
     lbl = lbl.transpose(2, 0, 1)   # NHWC -> NCHW
     lbl = np.array(lbl, dtype=np.float64)
     lbl = torch.from_numpy(lbl).float()
