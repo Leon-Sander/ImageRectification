@@ -17,6 +17,7 @@ import math
 import utils
 from icecream import ic
 from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
+import sys
 
 
 def add_coordConv_channels(t):
@@ -131,111 +132,11 @@ class DenseTransitionBlockDecoder(nn.Module):
     def forward(self, inputs):
         return self.main(inputs)
 
-## Dense encoders and decoders for image of size 128 128
+
 class waspDenseEncoder256(nn.Module):
-    def __init__(self, nc=1, ndf = 32, ndim = 256, activation=nn.LeakyReLU, args=[0.2, False], f_activation=nn.Tanh, f_args=[]):
-        super(waspDenseEncoder256, self).__init__()
-        self.ndim = ndim
-        #f_activation=nn.Sigmoid
-        self.main = nn.Sequential(
-                # input is (nc) x 128 x 128    256x256
-                nn.BatchNorm2d(nc),
-                nn.ReLU(True),
-                nn.Conv2d(nc, ndf, 4, stride=2, padding=1),
-                #nn.Conv2d(nc, ndf, 2, stride=2, padding=1),
-
-                # state size. (ndf) x 128 x 128
-                DenseBlockEncoder(ndf, 6),
-                DenseTransitionBlockEncoder(ndf, ndf, 2, activation=activation, args=args),
-
-                # state size. (ndf) x 64 x 64
-                DenseBlockEncoder(ndf, 6),
-                DenseTransitionBlockEncoder(ndf, ndf*2, 2, activation=activation, args=args),
-
-                # state size. (ndf*2) x 32 x 32
-                DenseBlockEncoder(ndf*2, 12),
-                DenseTransitionBlockEncoder(ndf*2, ndf*4, 2, activation=activation, args=args),
-
-                # state size. (ndf*4) x 16 x 16
-                DenseBlockEncoder(ndf*4, 16),
-                DenseTransitionBlockEncoder(ndf*4, ndf*8, 2, activation=activation, args=args),
-
-                # state size. (ndf*4) x 8 x 8
-                DenseBlockEncoder(ndf*8, 16),
-                DenseTransitionBlockEncoder(ndf*8, ndf*8, 2, activation=activation, args=args),
-
-                # state size. (ndf*8) x 4 x 4
-                DenseBlockEncoder(ndf*8, 16),
-                DenseTransitionBlockEncoder(ndf*8, ndim, 4, activation=activation, args=args),
-
-                # n_channels_in (256), n_channels_out 256, mp, activation=nn.ReLU, args=[False]) 
-                #DenseTransitionBlockEncoder(ndf*8, ndim, 5, activation=activation, args=args), # die 4 bzw 1 genauer nachschauen was das ist
-                f_activation(*f_args),
-        )
-
-    def forward(self, input):
-        input=add_coordConv_channels(input)
-        #self.log("shape", str(input.shape))
-        output = self.main(input)#.view(-1,self.ndim)
-        #output = self.main(input)
-        #print(output.size())
-        return output
-
-class waspDenseDecoder256(nn.Module):
-    def __init__(self, nz=256, nc=1, ngf=32, lb=0, ub=1, activation=nn.ReLU, args=[False], f_activation=nn.Hardtanh, f_args=[]):
-        super(waspDenseDecoder256, self).__init__()
-
-        #f_activation=nn.Sigmoid
-        self.main   = nn.Sequential(
-            # input is Z, going into convolution
-            nn.BatchNorm2d(nz),
-            activation(*args),
-            nn.ConvTranspose2d(nz, ngf * 8, 4, 1, 0, bias=False),
-            # inchannels, out channels, kernel size = 4, stride = 1, padding= 0
-
-            # state size. (ngf*8) x 4 x 4
-            DenseBlockDecoder(ngf*8, 16),
-            DenseTransitionBlockDecoder(ngf*8, ngf*8),
-
-            # state size. (ngf*4) x 8 x 8
-            DenseBlockDecoder(ngf*8, 16),
-            DenseTransitionBlockDecoder(ngf*8, ngf*4),
-
-            # state size. (ngf*2) x 16 x 16
-            DenseBlockDecoder(ngf*4, 12),
-            DenseTransitionBlockDecoder(ngf*4, ngf*2),
-
-            # state size. (ngf) x 32 x 32
-            DenseBlockDecoder(ngf*2, 6),
-            DenseTransitionBlockDecoder(ngf*2, ngf),
-
-            # state size. (ngf) x 64 x 64
-            DenseBlockDecoder(ngf, 6),
-            DenseTransitionBlockDecoder(ngf, ngf),
-
-            # hinzugefügt um auf 256 zu kommen
-            DenseBlockDecoder(ngf, 6),
-            DenseTransitionBlockDecoder(ngf, ngf),
-
-            # state size (ngf) x 128 x 128
-            nn.BatchNorm2d(ngf),
-            activation(*args),
-            nn.ConvTranspose2d(ngf, nc, 3, stride=1, padding=1, bias=False),
-            f_activation(*f_args),
-        )
-        # self.smooth=nn.Sequential(
-        #     nn.Conv2d(nc, nc, 1, stride=1, padding=0, bias=False),
-        #     f_activation(*f_args),
-        # )
-    def forward(self, inputs):
-        # return self.smooth(self.main(inputs))
-        return self.main(inputs)
-
-
-class waspDenseEncoder256_felix(nn.Module):
     def __init__(self, nc=1, ndf=32, ndim=256, activation=nn.LeakyReLU, args=[0.2, False], f_activation=nn.Tanh,
                  f_args=[]):
-        super(waspDenseEncoder256_felix, self).__init__()
+        super(waspDenseEncoder256, self).__init__()
         self.ndim = ndim
 
         self.main = nn.Sequential(
@@ -276,10 +177,10 @@ class waspDenseEncoder256_felix(nn.Module):
         output = self.main(input).view(-1, self.ndim)
         return output
 
-class waspDenseDecoder256_felix(nn.Module):
+class waspDenseDecoder256(nn.Module):
     def __init__(self, nz=128, nc=1, ngf=32, lb=0, ub=1, activation=nn.ReLU, args=[False], f_activation=nn.Hardtanh,
                  f_args=[]):
-        super(waspDenseDecoder256_felix, self).__init__()
+        super(waspDenseDecoder256, self).__init__()
         self.main = nn.Sequential(
             # input is Z, going into convolution
             nn.BatchNorm2d(nz),
@@ -339,8 +240,8 @@ class Backwardmapper(pl.LightningModule):
         #self.tensorboard = self.logger.experiment
         self.img_size = img_size if isinstance(img_size, tuple) else (img_size, img_size)
 
-        self.encoder=waspDenseEncoder256_felix(nc=self.nc+2,ndf=self.nf,ndim=self.ndim)
-        self.decoder=waspDenseDecoder256_felix(nz=self.ndim,nc=self.oc,ngf=self.nf)
+        self.encoder=waspDenseEncoder256(nc=self.nc+2,ndf=self.nf,ndim=self.ndim)
+        self.decoder=waspDenseDecoder256(nz=self.ndim,nc=self.oc,ngf=self.nf)
         #self.decoder=waspDenseDecoder128(nz=self.ndim,nc=self.oc,ngf=64)
         # self.fc_layers= nn.Sequential(nn.Linear(self.ndim, self.fcu),
         #                               nn.ReLU(True),
@@ -387,9 +288,12 @@ class Backwardmapper(pl.LightningModule):
         encoded=encoded.unsqueeze(-1).unsqueeze(-1)
         decoded=self.decoder(encoded)
 
-        l1_loss = self.L1_loss(decoded,labels['warped_bm'])
-        #l1_loss = torch.norm((decoded - labels['warped_bm']),p=1,dim=(1))
-        # angle loss noch
+        #l1_loss = self.L1_loss(decoded,labels['warped_bm'])
+        l1_loss = torch.norm((decoded - labels['warped_bm']),p=1,dim=(1))
+        l1_loss = l1_loss.unsqueeze(1)
+
+
+        # angle loss 
         angles_map = angles.calc_angles_torch(decoded.transpose(1,2).transpose(2,3))
         warped_angle = angles.warp_grid_torch(angles_map, labels['warped_uv'].transpose(1,2).transpose(2,3))
         warped_angle = warped_angle.transpose(3,2).transpose(2,1)
@@ -401,34 +305,27 @@ class Backwardmapper(pl.LightningModule):
         l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
         l_angle = l_angle * labels['warped_text_mask']
         
-        #self.log_ssim(inputs, decoded, labels, log_type)
+
         msssim_metric = ms_ssim( decoded, labels['warped_bm'], data_range=1, size_average=True)
         self.log('ms_ssim_' + log_type, msssim_metric, on_step=False, on_epoch=True)
 
-        #epe= torch.sum(torch.norm((decoded - labels['warped_bm']),p=1,dim=(1))) / (self.img_size[0] * self.img_size[1])
+
         epe= torch.mean(torch.norm((decoded - labels['warped_bm']),p=1,dim=(1)))
         self.log('epe_' + log_type,epe, on_step=False, on_epoch=True)
 
         loss = torch.mean(l1_loss + l_angle)
-        #loss = torch.mean(l1_loss)
         return loss
 
-    def log_ssim(self, inputs, decoded, labels, log_type):
-        for i in range(inputs.shape[0]):
-            #ic(labels['img'][i].unsqueeze(0).shape)
-            ssim = utils.unwarp_and_ssim(decoded[i].unsqueeze(0), labels['warped_bm'][i].unsqueeze(0), labels['img'][i].unsqueeze(0))
-            #self.log('ssim_' + log_type, ssim,on_step=True)
-            self.log('ssim_' + log_type, ssim,on_step=False, on_epoch=True)
-            
-            #tensorboard = self.logger.experiment
+    def log_images(self, inputs, decoded, labels, log_type):
+        for i in range(inputs.shape[0]):        
+            tensorboard = self.logger.experiment
 
-            #unwarped_image = utils.unwarp_image_logging(labels['img'][i].unsqueeze(0),decoded[i].unsqueeze(0))
-            #tensorboard.add_image('Unwarped_image_' + str(i),unwarped_image, self.global_step)
+            unwarped_image = utils.unwarp_image_logging(labels['img'][i].unsqueeze(0),decoded[i].unsqueeze(0))
+            tensorboard.add_image('Unwarped_image_' + str(i),unwarped_image, self.global_step)
 
     def training_step(self, batch, batch_idx):
         inputs, labels = batch
         loss = self.loss_calculation(inputs, labels)
-        #self.log("train_loss", loss,on_step=True)
         self.log("train_loss", loss, on_step=False, on_epoch=True)
         return loss
 
@@ -445,10 +342,8 @@ class Backwardmapper(pl.LightningModule):
         return loss
 
     def configure_optimizers(self):
-        #optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
-        #return optimizer
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay, amsgrad=True)
-        sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=25, verbose=True)
+        sched=torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=5, verbose=True)
         return {
         'optimizer': optimizer,
         'lr_scheduler': {
@@ -456,4 +351,3 @@ class Backwardmapper(pl.LightningModule):
             'monitor': 'validation_loss',
             }
         }
-        #return optimizer

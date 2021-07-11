@@ -39,7 +39,7 @@ def main(args):
         val_loader = DataLoader(dataset_val, batch_size= config['train_wc']['batch_size_val'], num_workers=12)
         test_loader = DataLoader(dataset_test, batch_size= config['train_wc']['batch_size_test'], num_workers=12)
 
-        early_stop_callback = EarlyStopping(monitor='validation_loss', min_delta=0.001, patience=15, verbose=True, mode='min')
+        early_stop_callback = EarlyStopping(monitor='validation_loss', min_delta=0.001, patience=config['train_wc']['early_stopping_patience'], verbose=True, mode='min')
         trainer = pl.Trainer(gpus=config['train_wc']['gpus'], max_epochs = config['train_wc']['max_epochs'],
                             log_every_n_steps=config['train_wc']['log_every_n_steps'],
                             check_val_every_n_epoch = config['train_wc']['check_val_every_n_epoch'],
@@ -77,7 +77,7 @@ def main(args):
         trainer = pl.Trainer(gpus=config['train_backwardmapper']['gpus'], max_epochs = config['train_backwardmapper']['max_epochs'],
                             log_every_n_steps=config['train_backwardmapper']['log_every_n_steps'],
                             check_val_every_n_epoch = config['train_backwardmapper']['check_val_every_n_epoch'],
-                            callbacks=early_stop_callback)#,
+                            callbacks=early_stop_callback)
                             #resume_from_checkpoint = '/home/sander/code/ImageRectification/lightning_logs/version_10/checkpoints/epoch=71-step=7559.ckpt')
 
         trainer.fit(model_bm, train_loader, val_loader)

@@ -1,4 +1,0 @@
-pytorch-lightning
-opencv-python
-matplotlib
-icecream

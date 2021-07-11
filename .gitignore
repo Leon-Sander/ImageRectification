@@ -5,6 +5,8 @@ doc
 images.ipynb
 Inv3D_pre
 pretrained_2
+leon.py
+imgs
 # Editors
 .vscode/
 .idea/

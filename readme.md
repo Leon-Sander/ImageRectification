@@ -1,11 +1,7 @@
 ## Image Rectification
 
 #### Setup
-clone the ssim into this repo
-https://github.com/Po-Hsun-Su/pytorch-ssim.git
-rename folder to pytorch_ssim_
-
-*todo: auf pip install umbauen*
+Install the requirements.
 
 #### Train models
 
@@ -22,8 +18,8 @@ replace $MODEL with
  - train_backwardmapper
  - train_full
 
-The model will be saved in the directory models/pretrained/$save_name.pkl
- The save_name can bespecified within the config file.
+The model will be saved in the directory models/pretrained/$SAVE_NAME.pkl
+The save_name can bespecified within the config file.
 
 #### Config file
  

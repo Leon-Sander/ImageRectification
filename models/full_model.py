@@ -10,6 +10,7 @@ import torch.nn.functional as F
 from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
 from icecream import ic
 import torch.nn as nn
+import sys
 
 
 class crease(pl.LightningModule):
@@ -35,23 +36,37 @@ class crease(pl.LightningModule):
         return output
 
 
-    def l_angle_def(self, theta_x, theta_y, theta_x_gt, theta_y_gt , type = 'paper'):
+    def l_angle_def(self, theta_x, theta_y, theta_x_gt, theta_y_gt , type = 'paper', p_x = 0, p_y = 0, bm_wc = 'bm'):
         if type == 'paper':
-            l_x = (torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi) % (2*math.pi)
-            l_y = (torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi) % (2*math.pi)
-            l_angle = torch.add(l_x, l_y)
-            return l_angle
+            if bm_wc == 'wc':
+                l_x = ((torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi)* p_x) % (2*math.pi)
+                l_y = ((torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi)* p_y) % (2*math.pi)
+                l_angle = torch.add(l_x, l_y)
+                return l_angle
+            else:
+                l_x = (torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi) % (2*math.pi)
+                l_y = (torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi) % (2*math.pi)
+                l_angle = torch.add(l_x, l_y)
+                return l_angle 
         else:
-            l_x = (math.pi) - torch.abs((torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi))
-            l_y = (math.pi) - torch.abs((torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi))
-            l_angle = torch.add(l_x, l_y)
-            return l_angle
+            if bm_wc == 'wc':
+                l_x = ((math.pi) - torch.abs((torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi))) * p_x
+                l_y = ((math.pi) - torch.abs((torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi))) * p_y
+                l_angle = torch.add(l_x, l_y)
+                return l_angle
+            else:
+                l_x = (math.pi) - torch.abs((torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi))
+                l_y = (math.pi) - torch.abs((torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi))
+                l_angle = torch.add(l_x, l_y)
+                return l_angle
             
 
     def l1_loss_calculation(self, outputs, labels):
         wc_coordinates = outputs[:,0:3,:,:]
         l1_loss = torch.norm((wc_coordinates - labels['wc_gt']),p=1,dim=(1))
-
+        #l1_loss = self.L1_loss(wc_coordinates,labels['wc_gt'])
+        l1_loss = l1_loss.unsqueeze(1)
+        #print(l1_loss.shape)
         
         phi_xx = outputs[:,3:4,:,:]
         phi_xy = outputs[:,4:5,:,:]
@@ -63,19 +78,26 @@ class crease(pl.LightningModule):
 
         theta_x = torch.atan2(phi_xx, phi_xy)
         theta_y = torch.atan2(phi_yx, phi_yy)
-        #p_x = torch.norm(phi_xx, phi_xy,p=2,dim=(1,2,3)) Bei der Norm darf nur ein Wert eingegeben Werden
-        #p_y = torch.norm(phi_yx, phi_yy,p=2,dim=(1,2,3))
+
+        p_x = torch.norm((phi_xx - phi_xy),p=2,dim=(1)) #Bei der Norm darf nur ein Wert eingegeben Werden
+        p_y = torch.norm((phi_yx - phi_yy),p=2,dim=(1))
+        p_x = p_x.unsqueeze(1)
+        p_y = p_y.unsqueeze(1)
+
         theta_x_gt = labels['warped_angle'][:,0:1,:,:]
         theta_y_gt = labels['warped_angle'][:,1:2,:,:]
-        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
+
+        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test', p_x, p_y, 'wc')
         l_angle = l_angle * labels['warped_text_mask']
+        #print(l_angle.shape)
 
         
-        l_curvature = torch.norm((curvature_mesh - labels['warped_curvature_gt']),p=2,dim=(1))
-        
+        l_curvature = torch.norm((curvature_mesh- labels['warped_curvature_gt']),p=2,dim=(1))
+        l_curvature = l_curvature.unsqueeze(1)
+        #print(l_curvature.shape)
         loss = l1_loss + l_angle + l_curvature
         #loss = torch.mean(loss)
-
+        #print(loss.shape)
         return loss
 
     def loss_calculation(self, images, labels, log_type = 'train'):
@@ -86,6 +108,8 @@ class crease(pl.LightningModule):
 
         
         bm_loss = torch.norm((backward_map - labels['warped_bm']),p=1,dim=(1))
+        bm_loss = bm_loss.unsqueeze(1)
+        #bm_loss = self.L1_loss(backward_map,labels['warped_bm'])
 
         epe= torch.mean(torch.norm((backward_map - labels['warped_bm']),p=1,dim=(1)))
         self.log('epe_' + log_type,epe, on_step=False, on_epoch=True)
@@ -104,6 +128,8 @@ class crease(pl.LightningModule):
         l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
         l_angle = l_angle * labels['warped_text_mask']
 
+        #print(l3d_loss.shape, bm_loss.shape, l_angle.shape)
+        #sys.exit(1)
         loss = l3d_loss + bm_loss + l_angle
         loss = torch.mean(loss)
         return loss

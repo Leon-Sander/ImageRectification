@@ -5,7 +5,7 @@ import functools
 import pytorch_lightning as pl
 import math
 import torch.nn as nn
-
+import sys
 
 class Estimator3d(pl.LightningModule):
     def __init__(self, input_nc, output_nc, num_downs, ngf=64,
@@ -53,8 +53,9 @@ class Estimator3d(pl.LightningModule):
 
     def loss_calculation(self, outputs, labels):
         wc_coordinates = outputs[:,0:3,:,:]
-        #l1_loss = torch.norm((wc_coordinates - labels['wc_gt']),p=1,dim=(1))
-        l1_loss = self.L1_loss(wc_coordinates,labels['wc_gt'])
+        l1_loss = torch.norm((wc_coordinates - labels['wc_gt']),p=1,dim=(1))
+        l1_loss = l1_loss.unsqueeze(1)
+        #l1_loss = self.L1_loss(wc_coordinates,labels['wc_gt'])
 
         
         phi_xx = outputs[:,3:4,:,:]
@@ -86,6 +87,8 @@ class Estimator3d(pl.LightningModule):
         l_curvature = torch.norm((curvature_mesh- labels['warped_curvature_gt']),p=2,dim=(1))
         l_curvature = l_curvature.unsqueeze(1)
         
+        #print(l1_loss.shape, l_angle.shape, l_curvature.shape)
+        #sys.exit(1)
         loss = l1_loss + l_angle + l_curvature
         loss = torch.mean(loss)
 

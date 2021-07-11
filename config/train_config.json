@@ -3,8 +3,8 @@
         {
             "img_size" : 256,
             "input_nc" : 3, 
-            "output_nc" : 8, 
-            "num_downs" : 5, 
+            "output_nc" : 5, 
+            "num_downs" : 10, 
             "ngf" : 64,
             "norm_layer" : "nn.BatchNorm2d", 
             "use_dropout" : 0,
@@ -16,12 +16,12 @@
             "batch_size_test" : 16,
             "gpus" : 1,
             "max_epochs" : 1500,
-            "save_name" : "monster_wc_longrun",
-            "use_pretrained_model_name" : "",
+            "save_name" : "monster_wc_final_test",
+            "use_pretrained_model_name" : "monster_wc_norm_v2",
             "use_pretrained" : 0,
             "log_every_n_steps" : 20,
             "check_val_every_n_epoch" : 1,
-            "early_stopping_patience" : 150
+            "early_stopping_patience" : 15
 
         },   
 
@@ -40,12 +40,12 @@
             "batch_size_test" : 16,
             "gpus" : 1,
             "max_epochs" : 1500,
-            "save_name" : "monster_bm_longrun",
+            "save_name" : "monster_bm_norm",
             "use_pretrained" : 0,
-            "use_pretrained_model_name" : "monster_bm_v2",
+            "use_pretrained_model_name" : "monster_bm_norm",
             "log_every_n_steps" : 20,
             "check_val_every_n_epoch" : 1,
-            "early_stopping_patience" : 150
+            "early_stopping_patience" : 15
 
         },
 
@@ -66,11 +66,11 @@
             "batch_size_val" : 16,
             "batch_size_test" : 16,
             "gpus" : 1,
-            "max_epochs" : 500,
-            "save_name" : "crease_monster_best",
+            "max_epochs" : 1500,
+            "save_name" : "crease_monster_final",
             "load_3d" : "monster_wc_phi",
             "load_bm" : "monster_bm_v3",
-            "use_pretrained_model_name" : "",
+            "use_pretrained_model_name" : "crease_monster_best",
             "use_pretrained_crease" : 0,
             "log_every_n_steps" : 20,
             "check_val_every_n_epoch" : 1,
