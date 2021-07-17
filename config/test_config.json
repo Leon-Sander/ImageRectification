@@ -31,9 +31,9 @@
             "batch_size_test" : 16,
             "gpus" : 1,
             "max_epochs" : 500,
-            "load_3d" : "monster_wc_v1",
-            "load_bm" : "monster_bm_v3",
-            "use_pretrained_model_name" : "crease_monster_best",
+            "load_3d" : "monster_wc_paper",
+            "load_bm" : "monster_bm_paper",
+            "use_pretrained_model_name" : "crease_monster_paper",
             "log_every_n_steps" : 20
 
 

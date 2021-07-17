@@ -618,3 +618,43 @@ def calc_mssim(ordner, crease, data_dir):
 
 
     return paths
+
+def crease_save_fig(path, crease, counter):
+    wc, labels = crop_all(path)
+
+    img_cropped = labels['img'].unsqueeze(0)
+    img_uncropped = load_warped_document_resized(path)
+    
+
+    bm_crease = crease(img_cropped)
+
+
+    unwarped_image_pred = unwarp_image(img_cropped,bm_crease)
+    unwarped_image_gt = unwarp_image(img_cropped,labels['warped_bm'].unsqueeze(0))
+
+    unwarped_image_pred_ssim = unwarp_image_ssim(img_cropped,bm_crease)
+    unwarped_image_gt_ssim = unwarp_image_ssim(img_cropped,labels['warped_bm'].unsqueeze(0))
+
+
+    msssim_metric = ms_ssim(unwarped_image_pred_ssim, unwarped_image_gt_ssim, data_range=1, size_average=True)
+    #ssim_metric = ssim(unwarped_image_pred_ssmi, unwarped_image_gt_ssmi)
+
+
+    fig, (ax1, ax2, ax3) = plt.subplots(1,3, figsize=(15,5))
+    #ax1.imshow(img_cropped[0].transpose(0,1).transpose(1,2))
+    ax1.imshow(img_uncropped[0].transpose(0,1).transpose(1,2))
+    ax1.set_title('Warped Image')
+    ax1.axis('off')
+
+    ax2.imshow(unwarped_image_pred)
+    #ax2.set_title('Prediction, ssmi to gt: ' + str(ssim_metric))
+    ax2.set_title('Prediction, MS-SSIM to GT: ' + str(msssim_metric))
+    ax2.axis('off')
+
+    ax3.imshow(unwarped_image_gt)
+    ax3.set_title('Ground Truth')
+    ax3.axis('off')
+
+
+    plt.savefig('imgs/' + str(counter) + '.png')
+    plt.close()

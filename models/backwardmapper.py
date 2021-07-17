@@ -302,7 +302,7 @@ class Backwardmapper(pl.LightningModule):
 
         theta_x_gt = labels['warped_angle'][:,0:1,:,:]
         theta_y_gt = labels['warped_angle'][:,1:2,:,:]
-        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
+        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'paper')
         l_angle = l_angle * labels['warped_text_mask']
         
 
@@ -313,6 +313,7 @@ class Backwardmapper(pl.LightningModule):
         epe= torch.mean(torch.norm((decoded - labels['warped_bm']),p=1,dim=(1)))
         self.log('epe_' + log_type,epe, on_step=False, on_epoch=True)
 
+        #print(l_angle.shape, l1_loss.shape)
         loss = torch.mean(l1_loss + l_angle)
         return loss
 

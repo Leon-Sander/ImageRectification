@@ -12,7 +12,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import EarlyStopping
 
 
-to_test = 'wc'
+to_test = 'full'
 with open('config/test_config.json') as f:
     config = json.load(f)
 
