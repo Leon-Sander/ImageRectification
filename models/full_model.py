@@ -33,7 +33,8 @@ class crease(pl.LightningModule):
     def forward(self, input):
         warped_wc = self.estimator3d.forward(input)
         output = self.backward_map_estimator(warped_wc[:,0:3,:,:])
-        return output
+        unwarped_img = self.unwarp_image(input, output.transpose(1,2).transpose(2,3)) 
+        return unwarped_img
 
 
     def l_angle_def(self, theta_x, theta_y, theta_x_gt, theta_y_gt , type = 'paper', p_x = 0, p_y = 0, bm_wc = 'bm'):

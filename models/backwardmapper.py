@@ -306,12 +306,14 @@ class Backwardmapper(pl.LightningModule):
         l_angle = l_angle * labels['warped_text_mask']
         
 
-        msssim_metric = ms_ssim( decoded, labels['warped_bm'], data_range=1, size_average=True)
-        self.log('ms_ssim_' + log_type, msssim_metric, on_step=False, on_epoch=True)
 
+        unwarped_img = self.unwarp_image(labels['img'], decoded.transpose(1,2).transpose(2,3))
+        unwarped_img_gt = self.unwarp_image(labels['img'], labels['warped_bm'].transpose(1,2).transpose(2,3))
 
-        epe= torch.mean(torch.norm((decoded - labels['warped_bm']),p=1,dim=(1)))
+        epe= torch.mean(torch.norm((unwarped_img - unwarped_img_gt),p=1,dim=(1)))
         self.log('epe_' + log_type,epe, on_step=False, on_epoch=True)
+        msssim_metric = ms_ssim( unwarped_img, unwarped_img_gt, data_range=1, size_average=True)
+        self.log('ms_ssim_' + log_type, msssim_metric, on_step=False, on_epoch=True)
 
         #print(l_angle.shape, l1_loss.shape)
         loss = torch.mean(l1_loss + l_angle)
@@ -352,3 +354,20 @@ class Backwardmapper(pl.LightningModule):
             'monitor': 'validation_loss',
             }
         }
+
+    def unwarp_image(self, img, bm):
+        assert bm.shape[3] == 2, "BM shape needs to be (N, H, W, C)"
+        
+        n, c, h, w = img.shape
+
+        bm = bm.transpose(3, 2).transpose(2, 1)
+        bm = F.interpolate(bm, size=(h, w), mode='bilinear', align_corners=True) # align_corners=True -> old behaviour
+        bm = bm.transpose(1, 2).transpose(2, 3)
+
+        #bm = 2 * bm - 1 # adapt value range for grid_sample
+        bm = bm.transpose(1, 2) # rotate image by 90 degrees (NOTE: this transformation might be deleted in future BM versions)
+        
+        img = img.float()
+        res = F.grid_sample(input=img, grid=bm, align_corners=True) # align_corners=True -> old behaviour
+        res = torch.clamp(res, 0, 1) # clip values because of numerical instabilities
+        return res
