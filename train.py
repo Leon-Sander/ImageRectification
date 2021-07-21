@@ -27,7 +27,8 @@ def main(args):
                                     ngf = config['train_wc']['ngf'],
                                     use_dropout= bool(config['train_wc']['use_dropout']),
                                     lr = config['train_wc']['lr'],
-                                    weight_decay = config['train_wc']['weight_decay'])
+                                    weight_decay = config['train_wc']['weight_decay'],
+                                    angle_loss_type=config['train_wc']['angle_loss_type'])
         if bool(config['train_wc']['use_pretrained']):
             model.load_state_dict(torch.load('models/pretrained/' + config['train_wc']['use_pretrained_model_name'] + '.pkl'))
 
@@ -57,14 +58,18 @@ def main(args):
                                                 filters=config['train_backwardmapper']['filters'],
                                                 fc_units=config['train_backwardmapper']['fc_units'], 
                                                 lr = config['train_backwardmapper']['lr'], 
-                                                weight_decay=config['train_backwardmapper']['weight_decay'])
+                                                weight_decay=config['train_backwardmapper']['weight_decay'],
+                                                angle_loss_type=config['train_backwardmapper']['angle_loss_type'])
 
         if bool(config['train_backwardmapper']['use_pretrained']):
 
             model_bm.load_state_dict(torch.load('models/pretrained/' + config['train_backwardmapper']['use_pretrained_model_name'] + '.pkl'))
-        train_dataset_bm = Dataset_backward_mapping(data_dir=DATA_PATH+'train/', img_size=config['train_backwardmapper']['img_size'])
-        dataset_val = Dataset_backward_mapping(data_dir=DATA_PATH+'val/', img_size=config['train_backwardmapper']['img_size'])
-        dataset_test = Dataset_backward_mapping(data_dir=DATA_PATH+'test/', img_size=config['train_backwardmapper']['img_size'])
+        train_dataset_bm = Dataset_backward_mapping(data_dir=DATA_PATH+'train/', img_size=config['train_backwardmapper']['img_size'],
+                                                    resizing_from_size=config['train_backwardmapper']['resizing_from_size'])
+        dataset_val = Dataset_backward_mapping(data_dir=DATA_PATH+'val/', img_size=config['train_backwardmapper']['img_size'],
+                                                resizing_from_size=config['train_backwardmapper']['resizing_from_size'])
+        dataset_test = Dataset_backward_mapping(data_dir=DATA_PATH+'test/', img_size=config['train_backwardmapper']['img_size'],
+                                                resizing_from_size=config['train_backwardmapper']['resizing_from_size'])
         
         
         val_loader = DataLoader(dataset_val, batch_size= config['train_backwardmapper']['batch_size_val'], num_workers=12)
@@ -97,7 +102,8 @@ def main(args):
                                 lr = config['train_full']['lr'], 
                                 weight_decay=config['train_full']['weight_decay'], 
                                 load_3d =config['train_full']['load_3d'],
-                                load_bm = config['train_full']['load_bm'])
+                                load_bm = config['train_full']['load_bm'],
+                                angle_loss_type=config['train_full']['angle_loss_type'])
 
         if bool(config['train_full']['use_pretrained_crease']):
             model.load_state_dict(torch.load('models/pretrained/' + config['train_full']['use_pretrained_model_name'] + '.pkl'))
@@ -106,9 +112,12 @@ def main(args):
                                         verbose=True, mode='min')
 
 
-        dataset_train = Dataset_full_model(data_dir=DATA_PATH+'train/', img_size=config['train_full']['img_size'])
-        dataset_val = Dataset_full_model(data_dir=DATA_PATH+'val/', img_size=config['train_full']['img_size'])
-        dataset_test = Dataset_full_model(data_dir=DATA_PATH+'test/', img_size=config['train_full']['img_size'])
+        dataset_train = Dataset_full_model(data_dir=DATA_PATH+'train/', img_size=config['train_full']['img_size'],
+                                            resizing_from_size=config['train_full']['resizing_from_size'])
+        dataset_val = Dataset_full_model(data_dir=DATA_PATH+'val/', img_size=config['train_full']['img_size'],
+                                            resizing_from_size=config['train_full']['resizing_from_size'])
+        dataset_test = Dataset_full_model(data_dir=DATA_PATH+'test/', img_size=config['train_full']['img_size'],
+                                            resizing_from_size=config['train_full']['resizing_from_size'])
         
 
         train_loader = DataLoader(dataset_train, batch_size= config['train_full']['batch_size_train'], num_workers=12)

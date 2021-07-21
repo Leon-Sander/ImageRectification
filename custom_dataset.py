@@ -15,7 +15,7 @@ class CustomImageDataset_wc(Dataset):
 
     :param Dataset: Import from torch.utils.data.Dataset
     """
-    def __init__(self, data_dir, transform=True, img_size = 256):
+    def __init__(self, data_dir, img_size, transform=True):
         #self.img_labels = pd.read_csv(annotations_file)
         self.data_dir = data_dir
         self.transform = transform
@@ -208,10 +208,11 @@ class CustomImageDataset_wc(Dataset):
 
 class Dataset_backward_mapping(Dataset):
 
-    def __init__(self, data_dir, transform=True, img_size = 256):
+    def __init__(self, data_dir, img_size, resizing_from_size, transform=True):
         self.data_dir = data_dir
         self.transform = transform
         self.img_size = img_size if isinstance(img_size, tuple) else (img_size, img_size)
+        self.resizing_from_size = resizing_from_size
 
     def __len__(self):
         return len(os.listdir(self.data_dir))
@@ -270,10 +271,10 @@ class Dataset_backward_mapping(Dataset):
                 bm = labels[label]
                 bm = np.array(bm, dtype=np.float64)
 
-                bm = bm*448
+                bm = bm*self.resizing_from_size
                 bm[:,:,1]=bm[:,:,1]-t
                 bm[:,:,0]=bm[:,:,0]-l
-                bm=bm/np.array([float(448)-l-r, float(448)-t-b])
+                bm=bm/np.array([float(self.resizing_from_size)-l-r, float(self.resizing_from_size)-t-b])
                 bm=(bm-0.5)*2
                 bm = cv2.resize(bm, self.img_size, interpolation=cv2.INTER_NEAREST)
                 labels[label] = bm
@@ -317,10 +318,11 @@ class Dataset_backward_mapping(Dataset):
 
 class Dataset_full_model(Dataset):
 
-    def __init__(self, data_dir, transform=True, img_size = 256):
+    def __init__(self, data_dir, img_size, resizing_from_size, transform=True):
         self.data_dir = data_dir
         self.transform = transform
         self.img_size = img_size if isinstance(img_size, tuple) else (img_size, img_size)
+        self.resizing_from_size = resizing_from_size # for the scaling of the backwardmap
 
     def __len__(self):
         return len(os.listdir(self.data_dir))
@@ -339,6 +341,7 @@ class Dataset_full_model(Dataset):
         labels['warped_text_mask'] = np.load(data_path + '/warped_text_mask.npz')['warped_text_mask']
         labels['wc_gt'] = np.load(data_path + '/warped_WC.npz')['warped_WC'] #world coordinates ground truth
         labels['warped_curvature_gt'] = np.load(data_path + '/warped_curvature.npz')['warped_curvature']
+
         
         if self.transform:
             input, labels = self.tight_crop_all(input, labels)
@@ -385,10 +388,12 @@ class Dataset_full_model(Dataset):
                     bm = labels[label]
                     bm = np.array(bm, dtype=np.float64)
 
-                    bm = bm*448
+                    #bm = bm*448
+                    bm = bm*self.resizing_from_size
                     bm[:,:,1]=bm[:,:,1]-t
                     bm[:,:,0]=bm[:,:,0]-l
-                    bm=bm/np.array([float(448)-l-r, float(448)-t-b])
+                    #bm=bm/np.array([float(448)-l-r, float(448)-t-b])
+                    bm=bm/np.array([float(self.resizing_from_size)-l-r, float(self.resizing_from_size)-t-b])
                     bm=(bm-0.5)*2
                     bm = cv2.resize(bm, self.img_size, interpolation=cv2.INTER_NEAREST)
                     labels[label] = bm

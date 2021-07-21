@@ -1,22 +1,21 @@
 import torch
 import torch.nn as nn
-from torch.nn import init
 import functools
 import pytorch_lightning as pl
 import math
 import torch.nn as nn
-import sys
 from icecream import ic
 
 class Estimator3d(pl.LightningModule):
     def __init__(self, input_nc, output_nc, num_downs, ngf=64,
                  norm_layer=nn.BatchNorm2d, use_dropout=False,
-                 lr = "1e-3", weight_decay=5e-4):
+                 lr = "1e-3", weight_decay=5e-4, angle_loss_type = 'ours'):
         super(Estimator3d, self).__init__()
 
         self.lr = lr
         self.weight_decay = weight_decay
         self.L1_loss = nn.L1Loss(reduction='none')
+        self.angle_loss_type = angle_loss_type
 
         # construct unet structure
         unet_block = UnetSkipConnectionBlock(ngf * 8, ngf * 8, input_nc=None, submodule=None, norm_layer=norm_layer, innermost=True)
@@ -32,7 +31,7 @@ class Estimator3d(pl.LightningModule):
     def forward(self, input):
         return self.model(input)
 
-    def l_angle_def(self, theta_x, theta_y, theta_x_gt, theta_y_gt , type = 'paper', p_x = 0, p_y = 0):
+    def l_angle_def(self, theta_x, theta_y, theta_x_gt, theta_y_gt , type = 'test', p_x = 0, p_y = 0):
         if type == 'paper':
 
 
@@ -84,7 +83,7 @@ class Estimator3d(pl.LightningModule):
 
         #l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test')
         #l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'test', p_x, p_y)
-        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'paper', p_x, p_y)
+        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, self.angle_loss_type, p_x, p_y)
         l_angle = l_angle * labels['warped_text_mask']
         l_angle = l_angle.squeeze()
 

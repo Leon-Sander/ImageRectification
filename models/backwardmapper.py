@@ -1,23 +1,14 @@
 # Densenet decoder encoder with intermediate fully connected layers and dropout
 
 import torch
-import torch.backends.cudnn as cudnn
 import torch.nn as nn
 import torch.nn.functional as F
-import functools
-from torch.autograd import gradcheck
-from torch.autograd import Function
-from torch.autograd import Variable
-from torch.autograd import gradcheck
-from torch.autograd import Function
 import numpy as np
 import pytorch_lightning as pl
 import angles
 import math
-import utils
 from icecream import ic
-from pytorch_msssim import ssim, ms_ssim, SSIM, MS_SSIM
-import sys
+from pytorch_msssim import ms_ssim
 
 
 def add_coordConv_channels(t):
@@ -227,7 +218,7 @@ class Backwardmapper(pl.LightningModule):
     #img_size(h,w) -> ndim
     #out_channels  -> optical flow (x,y)
 
-    def __init__(self, img_size=256, in_channels=3, out_channels=2, filters=32,fc_units=100, lr = 1e-3, weight_decay=5e-4):
+    def __init__(self, img_size=256, in_channels=3, out_channels=2, filters=32,fc_units=100, lr = 1e-3, weight_decay=5e-4, angle_loss_type = 'test'):
         super(Backwardmapper, self).__init__()
         self.nc=in_channels
         self.nf=filters
@@ -239,6 +230,7 @@ class Backwardmapper(pl.LightningModule):
         self.L1_loss = nn.L1Loss(reduction='none')
         #self.tensorboard = self.logger.experiment
         self.img_size = img_size if isinstance(img_size, tuple) else (img_size, img_size)
+        self.angle_loss_type = angle_loss_type
 
         self.encoder=waspDenseEncoder256(nc=self.nc+2,ndf=self.nf,ndim=self.ndim)
         self.decoder=waspDenseDecoder256(nz=self.ndim,nc=self.oc,ngf=self.nf)
@@ -271,7 +263,7 @@ class Backwardmapper(pl.LightningModule):
         return encoded , self.decoder(encoded)
         #return encoded , encoded.unsqueeze(-1).unsqueeze(-1) , self.decoder(encoded.unsqueeze(-1).unsqueeze(-1))
 
-    def l_angle_def(self, theta_x, theta_y, theta_x_gt, theta_y_gt , type = 'paper'):
+    def l_angle_def(self, theta_x, theta_y, theta_x_gt, theta_y_gt , type = 'ours'):
         if type == 'paper':
             l_x = (torch.abs(torch.sub(theta_x, theta_x_gt)) - math.pi) % (2*math.pi)
             l_y = (torch.abs(torch.sub(theta_y, theta_y_gt)) - math.pi) % (2*math.pi)
@@ -302,7 +294,7 @@ class Backwardmapper(pl.LightningModule):
 
         theta_x_gt = labels['warped_angle'][:,0:1,:,:]
         theta_y_gt = labels['warped_angle'][:,1:2,:,:]
-        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'paper')
+        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, self.angle_loss_type)
         l_angle = l_angle * labels['warped_text_mask']
         
 
@@ -310,21 +302,23 @@ class Backwardmapper(pl.LightningModule):
         unwarped_img = self.unwarp_image(labels['img'], decoded.transpose(1,2).transpose(2,3))
         unwarped_img_gt = self.unwarp_image(labels['img'], labels['warped_bm'].transpose(1,2).transpose(2,3))
 
+        # metric logging
         epe= torch.mean(torch.norm((unwarped_img - unwarped_img_gt),p=1,dim=(1)))
         self.log('epe_' + log_type,epe, on_step=False, on_epoch=True)
         msssim_metric = ms_ssim( unwarped_img, unwarped_img_gt, data_range=1, size_average=True)
         self.log('ms_ssim_' + log_type, msssim_metric, on_step=False, on_epoch=True)
+        #self.log_images(unwarped_img)
 
         #print(l_angle.shape, l1_loss.shape)
         loss = torch.mean(l1_loss + l_angle)
         return loss
 
-    def log_images(self, inputs, decoded, labels, log_type):
-        for i in range(inputs.shape[0]):        
-            tensorboard = self.logger.experiment
-
-            unwarped_image = utils.unwarp_image_logging(labels['img'][i].unsqueeze(0),decoded[i].unsqueeze(0))
-            tensorboard.add_image('Unwarped_image_' + str(i),unwarped_image, self.global_step)
+    def log_images(self, unwarped_images, log_type):
+        '''
+        logs per step the first unwarped image
+        '''        
+        tensorboard = self.logger.experiment
+        tensorboard.add_image('Unwarped_image',unwarped_images[0], self.global_step)
 
     def training_step(self, batch, batch_idx):
         inputs, labels = batch

@@ -16,12 +16,14 @@ import sys
 class crease(pl.LightningModule):
     def __init__(self, num_downs = 5, input_nc_wc = 3, output_nc_wc = 8, img_size = 256 , use_pre_trained = False, ngf_wc=64,
                  norm_layer=nn.BatchNorm2d, use_dropout=False, lr = 1e-3, weight_decay=5e-4,
-                 load_3d = 'estimator3d', load_bm = 'backward_map_estimator'): #img_size
+                 load_3d = 'estimator3d', load_bm = 'backward_map_estimator', angle_loss_type = 'ours'): #img_size
         super(crease, self).__init__()
 
         self.L1_loss = nn.L1Loss(reduction='none')
         self.lr = lr
         self.weight_decay = weight_decay
+        self.angle_loss_type = angle_loss_type
+
         self.estimator3d = Estimator3d(input_nc = 3, output_nc = 8, num_downs = 5, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False)
         self.backward_map_estimator = Backwardmapper(img_size, in_channels=3, out_channels=2, filters=32,fc_units=100)
         if use_pre_trained:
@@ -33,8 +35,8 @@ class crease(pl.LightningModule):
     def forward(self, input):
         warped_wc = self.estimator3d.forward(input)
         output = self.backward_map_estimator(warped_wc[:,0:3,:,:])
-        unwarped_img = self.unwarp_image(input, output.transpose(1,2).transpose(2,3)) 
-        return unwarped_img
+        #unwarped_img = self.unwarp_image(input, output.transpose(1,2).transpose(2,3)) 
+        return output
 
 
     def l_angle_def(self, theta_x, theta_y, theta_x_gt, theta_y_gt , type = 'paper', p_x = 0, p_y = 0, bm_wc = 'bm'):
@@ -88,7 +90,7 @@ class crease(pl.LightningModule):
         theta_x_gt = labels['warped_angle'][:,0:1,:,:]
         theta_y_gt = labels['warped_angle'][:,1:2,:,:]
 
-        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'paper', p_x, p_y, 'wc')
+        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, self.angle_loss_type, p_x, p_y, 'wc')
         l_angle = l_angle * labels['warped_text_mask']
         #print(l_angle.shape)
 
@@ -117,12 +119,13 @@ class crease(pl.LightningModule):
 
         unwarped_img = self.unwarp_image(images, backward_map.transpose(1,2).transpose(2,3))
         unwarped_img_gt = self.unwarp_image(images, labels['warped_bm'].transpose(1,2).transpose(2,3))
-
+        
+        #metric logging
         epe= torch.mean(torch.norm((unwarped_img - unwarped_img_gt),p=1,dim=(1)))
         self.log('epe_' + log_type,epe, on_step=False, on_epoch=True)
         msssim_metric = ms_ssim( unwarped_img, unwarped_img_gt, data_range=1, size_average=True)
         self.log('ms_ssim_' + log_type, msssim_metric, on_step=False, on_epoch=True)
-
+        #self.log_images(unwarped_img)
 
         angles_map = angles.calc_angles_torch(backward_map.transpose(1,2).transpose(2,3))
         warped_angle = angles.warp_grid_torch(angles_map, labels['warped_uv'].transpose(1,2).transpose(2,3))
@@ -132,7 +135,7 @@ class crease(pl.LightningModule):
 
         theta_x_gt = labels['warped_angle'][:,0:1,:,:]
         theta_y_gt = labels['warped_angle'][:,1:2,:,:]
-        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, 'paper')
+        l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, self.angle_loss_type)
         l_angle = l_angle * labels['warped_text_mask']
 
         #ic(l3d_loss.shape, bm_loss.shape, l_angle.shape)
@@ -172,6 +175,13 @@ class crease(pl.LightningModule):
             'monitor': 'validation_loss',
             }
         }
+    
+    def log_images(self, unwarped_images, log_type):
+        '''
+        logs per step the first unwarped image
+        '''        
+        tensorboard = self.logger.experiment
+        tensorboard.add_image('Unwarped_image',unwarped_images[0], self.global_step)
 
     def unwarp_image(self, img, bm):
         assert bm.shape[3] == 2, "BM shape needs to be (N, H, W, C)"

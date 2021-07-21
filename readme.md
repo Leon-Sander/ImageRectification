@@ -27,3 +27,7 @@ The save_name can bespecified within the config file.
  the parameters for the model,
  the data path where the data lies,
  the name under which the trained model should be saved.
+
+ todo:
+ - utils anpassen
+ - unwarping anpassen bzgl eingabeformat
