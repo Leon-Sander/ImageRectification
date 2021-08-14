@@ -295,7 +295,7 @@ class Backwardmapper(pl.LightningModule):
         theta_x_gt = labels['warped_angle'][:,0:1,:,:]
         theta_y_gt = labels['warped_angle'][:,1:2,:,:]
         l_angle = self.l_angle_def(theta_x, theta_y, theta_x_gt, theta_y_gt, self.angle_loss_type)
-        l_angle = l_angle * labels['warped_text_mask']
+        #l_angle = l_angle * labels['warped_text_mask']
         
 
 
