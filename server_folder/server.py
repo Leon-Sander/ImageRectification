@@ -10,24 +10,18 @@ from flask import Flask, request, render_template, Response, send_file
 from models.full_model import crease
 from server_folder import preprocess
 import torch
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-from matplotlib import pyplot as plt
-import base64
-from io import BytesIO
 from PIL import Image
-import numpy as np
 import cv2
-import urllib
-
+import logging
 app = Flask(__name__)
-
+logging.basicConfig(level=logging.DEBUG)
 model = crease()
 model.load_state_dict(torch.load('models/pretrained/crease_monster_best.pkl'))
 model.eval()
 
-'''@app.route("/", methods=['GET'])
+@app.route("/", methods=['GET'])
 def home():
-    return render_template('index.html')'''
+    return render_template('index.html')
 
 @app.route("/", methods=['POST'])
 def rectify():
@@ -38,16 +32,15 @@ def rectify():
     preprocessed_img = preprocess.preprocess_img(image_file)
     bm_prediction = model.forward(preprocessed_img)
     unwarped_img = model.unwarp_image(preprocessed_img,bm_prediction.transpose(1,2).transpose(2,3))
-    #pngImageB64String = "data:image/png;base64,"
-    #pngImageB64String += base64.b64encode(output.getvalue()).decode('utf8')
-    
-    img = io.BytesIO()
-    plt.imshow(unwarped_img)
-    plt.savefig(img, format='png')  # save figure to the buffer
-    img.seek(0)  # rewind your buffer
-    #plot_url = urllib.parse.quote(base64.b64encode(img.read()).decode()) # base64 encode & URL-escape
-    plot_url = base64.b64encode(img.getvalue()).decode('utf8')
-    return render_template('index.html', plot_url=plot_url)
+    #app.logger.info(unwarped_img)
+    unwarped_img = unwarped_img * 255
+    img = Image.fromarray(unwarped_img.astype('uint8'))
+    file_object = io.BytesIO()
+    img.save(file_object, 'PNG')
+    file_object.seek(0)  # rewind your buffer
+
+    return send_file(file_object, mimetype='image/PNG')
+    #return render_template('index.html', plot_url=send_file(file_object, mimetype='image/PNG'))
 
 
 if __name__ == "__main__":

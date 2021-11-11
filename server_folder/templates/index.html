@@ -15,7 +15,9 @@
     </form>
 
     {% if plot_url %}
-        <img src="data:image/png;base64, {{ plot_url }}" width="20" height="20" alt="graph">
+    <div>
+        <img src=plot_url width="20" height="20" alt="graph">
+    </div>
     {% endif%}
 
 </body>
