@@ -198,5 +198,8 @@ class crease(pl.LightningModule):
         img = img.float()
         res = F.grid_sample(input=img, grid=bm, align_corners=True) # align_corners=True -> old behaviour
         res = torch.clamp(res, 0, 1) # clip values because of numerical instabilities
+        res = res.transpose(1,2).transpose(2,3)#.detach()
+        res = res.detach()
+        res = res.numpy()[0]
         return res
         

@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Deployment</title>
+</head>
+<body>
+    <h1 class="text-center">Image Rectification</h1>
+
+    <form class="p-3 text-center" axtion='/', method="post" enctype="multipart/form-data">
+        <input class="form-control" type="file" name="imagefile">
+        <input class="btn btn-primary mt-3" type="submit" value="Rectify Image">
+    </form>
+
+    {% if plot_url %}
+        <img src="data:image/png;base64, {{ plot_url }}" width="20" height="20" alt="graph">
+    {% endif%}
+
+</body>
+</html>
