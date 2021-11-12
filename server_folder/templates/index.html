@@ -9,14 +9,14 @@
 <body>
     <h1 class="text-center">Image Rectification</h1>
 
-    <form class="p-3 text-center" axtion='/', method="post" enctype="multipart/form-data">
+    <form class="p-3 text-center" action='/', method="post" enctype="multipart/form-data">
         <input class="form-control" type="file" name="imagefile">
         <input class="btn btn-primary mt-3" type="submit" value="Rectify Image">
     </form>
 
     {% if plot_url %}
     <div>
-        <img src=plot_url width="20" height="20" alt="graph">
+        <img src="data:image/png;base64,{{plot_url}}" width="256" height="256" alt="graph">
     </div>
     {% endif%}
 
