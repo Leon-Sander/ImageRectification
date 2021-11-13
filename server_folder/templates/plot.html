@@ -7,18 +7,15 @@
     <title>Model Deployment</title>
 </head>
 <body>
-    <h1 class="text-center">Image Rectification</h1>
-
-    <form class="p-3 text-center" action='/plot', method="post" enctype="multipart/form-data">
-        <input class="form-control" type="file" name="imagefile">
-        <input class="btn btn-primary mt-3" type="submit" value="Rectify Image">
-    </form>
-
-    {% if plot_url %}
+    <h1 class="text-center">Rectified Image</h1>
     <div>
         <img src="data:image/png;base64,{{plot_url}}" width="256" height="256" alt="graph">
     </div>
-    {% endif%}
 
+    <h1 class="text-center">Return to image selection</h1>
+
+    <form class="p-3 text-center" action='/', method="GET" enctype="multipart/form-data">
+        <input class="btn btn-primary mt-3" type="submit" value="Return">
+    </form>
 </body>
 </html>

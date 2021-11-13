@@ -25,7 +25,7 @@ model.eval()
 def home():
     return render_template('index.html')
 
-@app.route("/", methods=['POST'])
+@app.route("/plot", methods=['POST'])
 def rectify():
     image_file = request.files['imagefile']
     image_path = "./server_folder/images/" + image_file.filename
@@ -45,9 +45,9 @@ def rectify():
 
     data = base64.b64encode(file_object.getbuffer()).decode('ascii')
 
-    return render_template('index.html', plot_url=data)
+    return render_template('plot.html', plot_url=data)
 
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000, debug = True)
+    app.run(host="0.0.0.0", port=8000, debug = False)
